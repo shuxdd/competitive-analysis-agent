@@ -6,13 +6,19 @@
 """
 
 from .settings import settings
-from .prompts import EXTRACTION_PROMPT, SWOT_PROMPT, REPORT_PROMPT, PLANNING_PROMPT, QA_PROMPT
+from .prompts import (
+    EXTRACTION_PROMPT, SWOT_PROMPT, REPORT_PROMPT,
+    QUICK_REPORT_PROMPT, DEEP_REPORT_PROMPT,
+    PLANNING_PROMPT, QA_PROMPT
+)
 
 __all__ = [
     "settings",
     "EXTRACTION_PROMPT",
     "SWOT_PROMPT",
     "REPORT_PROMPT",
+    "QUICK_REPORT_PROMPT",
+    "DEEP_REPORT_PROMPT",
     "PLANNING_PROMPT",
     "QA_PROMPT",
 ]

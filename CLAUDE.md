@@ -84,6 +84,7 @@ python examples/models_demo.py
 python examples/knowledge_demo.py
 python examples/collector_demo.py
 python examples/agent_demo.py
+python examples/report_demo.py
 
 # 启动API服务（待开发）
 # uvicorn api.app:app --reload
@@ -111,13 +112,13 @@ SERPAPI_KEY=your-serpapi-key
 | collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗） |
 | config/ | ✅ 完成 | 配置管理 |
 | agent/ | ✅ 完成 | Agent核心（LangGraph状态图） |
-| report/ | ⏳ 待开发 | 报告生成 |
+| report/ | ✅ 完成 | 报告生成（模板管理、Markdown/HTML导出） |
 | api/ | ⏳ 待开发 | FastAPI接口 |
 | display/ | ⏳ 待开发 | Streamlit前端 |
 | utils/ | ⏳ 待开发 | 工具类 |
 
 ## 测试统计
 
-- 测试文件：5个
-- 测试用例：50个
+- 测试文件：6个
+- 测试用例：63个
 - 状态：全部通过
