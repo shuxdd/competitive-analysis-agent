@@ -6,7 +6,7 @@
 
 ## 技术栈
 
-- **Python**: 3.12+
+- **Python**: 3.13+
 - **LLM框架**: LangChain + LangGraph
 - **向量数据库**: Chroma
 - **后端**: FastAPI
@@ -99,7 +99,7 @@ utils/          - 工具类
 pip install -r requirements.txt
 
 # 运行全部测试
-pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py -v
+pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py tests/test_report.py -v
 
 # 运行单个模块测试
 pytest tests/test_agent.py -v
