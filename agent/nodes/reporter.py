@@ -12,8 +12,8 @@ from config.prompts import REPORT_PROMPT
 from utils.report_helpers import (
     generate_report_header,
     generate_fallback_report,
+    prepare_analysis_data,
 )
-from utils.json_utils import json_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def _prepare_analysis_data(analysis_results: dict, competitors: list) -> str:
         "review_analysis": analysis_results.get("review_analysis", {})
     }
 
-    return json_serialize(data)
+    return prepare_analysis_data(data)
 
 
 def _generate_header(competitors: list, analysis_type: str) -> str:
