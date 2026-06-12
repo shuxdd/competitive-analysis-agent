@@ -51,5 +51,68 @@ class TestDatabase:
         assert expected.issubset(columns)
 
 
+# ==================== Schema 测试 ====================
+
+class TestSchemas:
+    """API Schema 测试"""
+
+    def test_competitor_response_schema(self):
+        """测试竞品响应 Schema"""
+        from api.schemas import CompetitorResponse
+
+        data = {
+            "id": "test-id",
+            "name": "竞品A",
+            "website": "https://example.com",
+            "industry": "SaaS",
+            "tags": ["AI"],
+            "notes": None,
+            "created_at": "2026-06-12T00:00:00",
+            "updated_at": "2026-06-12T00:00:00",
+        }
+        resp = CompetitorResponse(**data)
+        assert resp.id == "test-id"
+        assert resp.name == "竞品A"
+
+    def test_analysis_submit_response(self):
+        """测试分析提交响应 Schema"""
+        from api.schemas import AnalysisSubmitResponse
+
+        resp = AnalysisSubmitResponse(
+            task_id="task-123",
+            status="pending",
+            message="分析任务已提交",
+        )
+        assert resp.task_id == "task-123"
+        assert resp.status == "pending"
+
+    def test_api_response_wrapper(self):
+        """测试统一响应包装"""
+        from api.schemas import ApiResponse
+
+        resp = ApiResponse(code=200, data={"key": "value"}, message="success")
+        assert resp.code == 200
+        assert resp.data["key"] == "value"
+
+    def test_qa_request_schema(self):
+        """测试问答请求 Schema"""
+        from api.schemas import QARequest
+
+        req = QARequest(question="Notion 的定价是什么？")
+        assert req.question == "Notion 的定价是什么？"
+        assert req.competitors is None
+
+    def test_qa_response_schema(self):
+        """测试问答响应 Schema"""
+        from api.schemas import QAResponse
+
+        resp = QAResponse(
+            answer="Notion 提供免费版和付费版",
+            sources=["竞品知识库"],
+        )
+        assert "Notion" in resp.answer
+        assert len(resp.sources) == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
