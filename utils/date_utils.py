@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Optional
 
 
-def format_datetime(dt: datetime = None, format_str: str = "%Y-%m-%d %H:%M") -> str:
+def format_datetime(dt: Optional[datetime] = None, format_str: str = "%Y-%m-%d %H:%M") -> str:
     """
     格式化日期时间。
 

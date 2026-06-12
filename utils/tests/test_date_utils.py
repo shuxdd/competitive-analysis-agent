@@ -30,13 +30,10 @@ class TestFormatDatetime:
 class TestGetCurrentTimestamp:
     """get_current_timestamp 函数测试"""
 
-    def test_returns_string(self):
-        """测试返回字符串"""
-        result = get_current_timestamp()
-        assert isinstance(result, str)
-
     def test_iso_format(self):
         """测试 ISO 格式"""
         result = get_current_timestamp()
-        # ISO 格式包含 T
-        assert "T" in result or "-" in result
+        assert isinstance(result, str)
+        # 验证结果可被 datetime.fromisoformat 解析
+        parsed = datetime.fromisoformat(result)
+        assert isinstance(parsed, datetime)
