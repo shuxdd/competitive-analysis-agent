@@ -11,6 +11,8 @@ from typing import List, Dict, Any, Optional
 import uuid
 import logging
 
+from utils.metadata_utils import sanitize_metadatas
+
 logger = logging.getLogger(__name__)
 
 
@@ -86,16 +88,7 @@ class VectorStore:
 
         # 确保元数据中的值都是字符串
         if metadatas:
-            cleaned_metadatas = []
-            for meta in metadatas:
-                cleaned = {}
-                for key, value in meta.items():
-                    if isinstance(value, (list, dict)):
-                        cleaned[key] = str(value)
-                    else:
-                        cleaned[key] = value
-                cleaned_metadatas.append(cleaned)
-            metadatas = cleaned_metadatas
+            metadatas = sanitize_metadatas(metadatas)
 
         collection.add(
             documents=documents,
@@ -125,16 +118,7 @@ class VectorStore:
         collection = self.get_or_create_collection(collection_name)
 
         if metadatas:
-            cleaned_metadatas = []
-            for meta in metadatas:
-                cleaned = {}
-                for key, value in meta.items():
-                    if isinstance(value, (list, dict)):
-                        cleaned[key] = str(value)
-                    else:
-                        cleaned[key] = value
-                cleaned_metadatas.append(cleaned)
-            metadatas = cleaned_metadatas
+            metadatas = sanitize_metadatas(metadatas)
 
         collection.update(
             documents=documents,
