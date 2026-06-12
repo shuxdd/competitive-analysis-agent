@@ -9,6 +9,8 @@ import re
 from typing import List, Dict, Any, Optional
 import logging
 
+from utils.text_utils import clean_text as utils_clean_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,14 +34,8 @@ class DataCleaner:
         # 移除HTML标签
         text = re.sub(r'<[^>]+>', '', text)
 
-        # 移除多余空白
-        text = re.sub(r'\s+', ' ', text)
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-
-        # 移除特殊字符
-        text = re.sub(r'[^\S\n]+', ' ', text)
-
-        return text.strip()
+        # 使用 utils.text_utils 进行文本清洗
+        return utils_clean_text(text)
 
     @staticmethod
     def extract_price(text: str) -> List[Dict[str, Any]]:

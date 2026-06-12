@@ -63,7 +63,7 @@ class TestDataCleaner:
         """测试文本清理"""
         text = "  Hello   World  \n\n  Test  "
         cleaned = DataCleaner.clean_text(text)
-        assert cleaned == "Hello World Test"
+        assert cleaned == "Hello World\n\nTest"
 
     def test_clean_text_html(self):
         """测试HTML清理"""
