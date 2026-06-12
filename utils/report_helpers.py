@@ -92,9 +92,12 @@ def generate_fallback_report(
     if features:
         sections.append("## 主要功能\n")
         for f in features:
-            name = f.get("name", "未知功能")
-            desc = f.get("description", "")
-            sections.append(f"- **{name}**: {desc}")
+            if isinstance(f, dict):
+                name = f.get("name", "未知功能")
+                desc = f.get("description", "")
+                sections.append(f"- **{name}**: {desc}")
+            else:
+                sections.append(f"- {f}")
         sections.append("")
 
     # 定价对比

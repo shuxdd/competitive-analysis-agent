@@ -5,12 +5,15 @@
 使用LLM生成竞品分析报告。
 """
 
-import json
 import logging
-from datetime import datetime
 from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import REPORT_PROMPT
+from utils.report_helpers import (
+    generate_report_header,
+    generate_fallback_report,
+)
+from utils.json_utils import json_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +62,7 @@ async def generate_report(state: AgentState) -> dict:
 
 
 def _prepare_analysis_data(analysis_results: dict, competitors: list) -> str:
-    """准备报告所需的分析数据"""
+    """准备报告所需的分析数据，委托给 utils 模块"""
     data = {
         "competitors": competitors,
         "analysis_summary": analysis_results.get("summary", ""),
@@ -69,64 +72,31 @@ def _prepare_analysis_data(analysis_results: dict, competitors: list) -> str:
         "review_analysis": analysis_results.get("review_analysis", {})
     }
 
-    return json.dumps(data, ensure_ascii=False, indent=2, default=str)
+    return json_serialize(data)
 
 
 def _generate_header(competitors: list, analysis_type: str) -> str:
-    """生成报告头部"""
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    type_names = {"quick": "快速", "standard": "标准", "deep": "深度"}
-
-    return f"""# 竞品分析报告
-
-> 生成时间: {now}
-> 分析类型: {type_names.get(analysis_type, analysis_type)}
-> 竞品数量: {len(competitors)}
-> 竞品列表: {', '.join(competitors)}
-
----"""
+    """生成报告头部，委托给 utils.report_helpers"""
+    return generate_report_header(
+        title="竞品分析报告",
+        competitors=competitors,
+        report_type=analysis_type,
+    )
 
 
 def _generate_simple_report(analysis_results: dict, competitors: list) -> str:
-    """生成简化报告（降级方案）"""
-    header = _generate_header(competitors, "standard")
+    """生成简化报告（降级方案），委托给 utils.report_helpers"""
+    # 适配 analysis_results -> analysis_data 格式
+    analysis_data = {
+        "analysis_summary": analysis_results.get("summary", ""),
+        "feature_matrix": analysis_results.get("feature_matrix", {}),
+        "pricing_comparison": analysis_results.get("pricing_comparison", {}),
+        "swot_analysis": analysis_results.get("swot_analysis", {}),
+    }
 
-    sections = [header, "\n## 分析摘要\n"]
-    sections.append(analysis_results.get("summary", "暂无摘要"))
+    # 为每个竞品生成报告并合并
+    reports = []
+    for competitor in competitors:
+        reports.append(generate_fallback_report(competitor, analysis_data))
 
-    # 功能矩阵
-    matrix = analysis_results.get("feature_matrix", {})
-    if matrix and matrix.get("features"):
-        sections.append("\n## 功能对比\n")
-        features = matrix["features"][:10]
-        for feature in features:
-            sections.append(f"- {feature}")
-
-    # 定价对比
-    pricing = analysis_results.get("pricing_comparison", {})
-    if pricing and pricing.get("competitors"):
-        sections.append("\n## 定价对比\n")
-        for name, info in pricing["competitors"].items():
-            if info.get("prices"):
-                prices_str = ", ".join(f"{p.get('currency', '')} {p.get('price', '')}" for p in info["prices"][:3])
-                sections.append(f"- **{name}**: {prices_str}")
-            else:
-                sections.append(f"- **{name}**: 暂无定价信息")
-
-    # SWOT
-    swot = analysis_results.get("swot_analysis", {})
-    if swot:
-        sections.append("\n## SWOT分析\n")
-        for name, s in swot.items():
-            sections.append(f"\n### {name}\n")
-            if isinstance(s, dict) and "raw_response" not in s:
-                for key in ["strengths", "weaknesses", "opportunities", "threats"]:
-                    if key in s:
-                        sections.append(f"\n**{key.title()}**:")
-                        for item in s[key][:3]:
-                            sections.append(f"- {item}")
-            else:
-                sections.append(json.dumps(s, ensure_ascii=False, default=str)[:500])
-
-    sections.append(f"\n\n---\n*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}*")
-    return "\n".join(sections)
+    return "\n\n".join(reports)
