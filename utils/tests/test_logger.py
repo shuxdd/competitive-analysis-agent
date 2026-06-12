@@ -1,7 +1,17 @@
 import logging
-import os
-import tempfile
-from utils.logger import setup_logger, get_logger
+from unittest.mock import patch
+
+import pytest
+
+from utils.logger import setup_logger, get_logger, _configured_loggers
+
+
+@pytest.fixture(autouse=True)
+def reset_configured_loggers():
+    """在每个测试前重置 _configured_loggers，防止测试间干扰。"""
+    _configured_loggers.clear()
+    yield
+    _configured_loggers.clear()
 
 
 class TestSetupLogger:
@@ -28,6 +38,30 @@ class TestSetupLogger:
         logger = setup_logger("test_format")
         handler = logger.handlers[0]
         assert handler.formatter is not None
+
+    def test_setup_logger_no_duplicate_handlers(self):
+        """测试重复调用不会添加重复处理器"""
+        logger = setup_logger("test_no_dup")
+        handler_count = len(logger.handlers)
+        assert handler_count > 0
+
+        # 再次调用，处理器数量不应增加
+        logger2 = setup_logger("test_no_dup")
+        assert logger2 is logger
+        assert len(logger.handlers) == handler_count
+
+    def test_setup_logger_file_handler_failure(self):
+        """测试文件处理器创建失败时回退到仅控制台"""
+        with patch("utils.logger.Path.mkdir", side_effect=OSError("权限不足")):
+            logger = setup_logger("test_file_fail")
+            # 应该仍然有控制台处理器
+            assert len(logger.handlers) >= 1
+            # 确认没有 FileHandler
+            file_handlers = [
+                h for h in logger.handlers
+                if isinstance(h, logging.FileHandler)
+            ]
+            assert len(file_handlers) == 0
 
 
 class TestGetLogger:
