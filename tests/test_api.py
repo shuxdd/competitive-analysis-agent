@@ -273,5 +273,53 @@ class TestAnalysisRoutes:
         assert resp.status_code == 200
 
 
+class TestReportRoutes:
+    """报告路由测试"""
+
+    @pytest.mark.asyncio
+    async def test_list_reports_empty(self, client):
+        """测试获取空报告列表"""
+        resp = await client.get("/api/reports")
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_report_not_found(self, client):
+        """测试获取不存在的报告"""
+        resp = await client.get("/api/reports/nonexistent")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_report_not_found(self, client):
+        """测试删除不存在的报告"""
+        resp = await client.delete("/api/reports/nonexistent")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_list_reports_with_data(self, client):
+        """测试获取报告列表（有数据）"""
+        from api.database import ReportORM
+        async with test_async_session() as session:
+            report = ReportORM(
+                analysis_id="test-analysis",
+                title="测试报告",
+                report_type="standard",
+                format="markdown",
+                content="# 测试报告内容",
+            )
+            session.add(report)
+            await session.commit()
+
+        resp = await client.get("/api/reports")
+        assert resp.status_code == 200
+        assert resp.json()["total"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_export_report_not_found(self, client):
+        """测试导出不存在的报告"""
+        resp = await client.get("/api/reports/nonexistent/export")
+        assert resp.status_code == 404
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
