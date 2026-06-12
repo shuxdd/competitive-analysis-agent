@@ -9,6 +9,7 @@ from .base import BaseCollector, CollectorResult
 from .web_search import WebSearchCollector
 from .web_scraper import WebScraperCollector
 from .cleaner import DataCleaner
+from .github_collector import GitHubCollector
 
 __all__ = [
     "BaseCollector",
@@ -16,4 +17,5 @@ __all__ = [
     "WebSearchCollector",
     "WebScraperCollector",
     "DataCleaner",
+    "GitHubCollector",
 ]

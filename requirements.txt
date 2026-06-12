@@ -30,6 +30,7 @@ selenium>=4.25.0
 beautifulsoup4>=4.12.3
 requests>=2.32.3
 httpx>=0.27.2
+PyGithub>=2.1.0
 
 # 文档解析
 pymupdf>=1.24.10

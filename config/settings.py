@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # SerpAPI配置
     serpapi_key: str = ""
 
+    # GitHub配置
+    github_token: str = ""
+
     # 爬虫配置
     scrape_timeout: int = 30
     max_retries: int = 3
