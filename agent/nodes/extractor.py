@@ -5,11 +5,11 @@
 使用LLM从爬取的网页中提取结构化竞品信息。
 """
 
-import json
 import logging
 from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import EXTRACTION_PROMPT
+from utils.llm_parser import extract_json_from_llm
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +50,8 @@ async def extract_info(state: AgentState) -> dict:
                 content = response.content
 
                 # 解析JSON响应
-                try:
-                    if "```json" in content:
-                        json_str = content.split("```json")[1].split("```")[0].strip()
-                    elif "```" in content:
-                        json_str = content.split("```")[1].split("```")[0].strip()
-                    else:
-                        json_str = content.strip()
-
-                    info = json.loads(json_str)
-                except json.JSONDecodeError:
+                info = extract_json_from_llm(content)
+                if info is None:
                     info = {"raw_response": content}
 
                 extracted.append({
