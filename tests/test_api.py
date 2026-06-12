@@ -222,5 +222,56 @@ class TestCompetitorRoutes:
         assert resp.status_code == 404
 
 
+class TestAnalysisRoutes:
+    """分析任务路由测试"""
+
+    @pytest.mark.asyncio
+    async def test_submit_analysis(self, client):
+        """测试提交分析任务"""
+        resp = await client.post("/api/analysis", json={
+            "competitors": ["Notion", "Obsidian"],
+            "analysis_type": "quick",
+            "dimensions": ["features"],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["code"] == 200
+        assert data["data"]["task_id"] is not None
+        assert data["data"]["status"] == "pending"
+
+    @pytest.mark.asyncio
+    async def test_list_tasks(self, client):
+        """测试获取任务列表"""
+        await client.post("/api/analysis", json={"competitors": ["Test"]})
+        resp = await client.get("/api/analysis")
+        assert resp.status_code == 200
+        assert resp.json()["total"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_get_task(self, client):
+        """测试获取任务详情"""
+        submit_resp = await client.post("/api/analysis", json={"competitors": ["Notion"]})
+        task_id = submit_resp.json()["data"]["task_id"]
+
+        resp = await client.get(f"/api/analysis/{task_id}")
+        assert resp.status_code == 200
+        assert resp.json()["data"]["id"] == task_id
+
+    @pytest.mark.asyncio
+    async def test_get_task_not_found(self, client):
+        """测试获取不存在的任务"""
+        resp = await client.get("/api/analysis/nonexistent")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_task(self, client):
+        """测试删除任务"""
+        submit_resp = await client.post("/api/analysis", json={"competitors": ["Notion"]})
+        task_id = submit_resp.json()["data"]["task_id"]
+
+        resp = await client.delete(f"/api/analysis/{task_id}")
+        assert resp.status_code == 200
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
