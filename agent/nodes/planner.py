@@ -11,6 +11,7 @@ from typing import Any
 from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import PLANNING_PROMPT
+from utils.llm_parser import extract_json_from_llm
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,9 @@ async def plan_analysis(state: AgentState) -> dict:
 
         # 尝试解析JSON
         try:
-            # 提取JSON部分（可能被markdown包裹）
-            if "```json" in content:
-                json_str = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                json_str = content.split("```")[1].split("```")[0].strip()
-            else:
-                json_str = content.strip()
-
-            plan = json.loads(json_str)
+            plan = extract_json_from_llm(content)
+            if plan is None:
+                raise json.JSONDecodeError("无法解析 JSON", content, 0)
         except json.JSONDecodeError:
             # 如果解析失败，生成默认计划
             logger.warning("LLM返回的计划无法解析为JSON，使用默认计划")
