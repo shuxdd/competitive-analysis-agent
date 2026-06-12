@@ -10,6 +10,7 @@ from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import EXTRACTION_PROMPT
 from utils.llm_parser import extract_json_from_llm
+from utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ async def extract_info(state: AgentState) -> dict:
                 truncated_text = text[:4000]
 
                 prompt = EXTRACTION_PROMPT.format(content=truncated_text)
-                response = await llm.ainvoke(prompt)
+                response = await retry_async(lambda: llm.ainvoke(prompt))
                 content = response.content
 
                 # 解析JSON响应

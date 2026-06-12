@@ -12,6 +12,7 @@ from agent.graph_state import AgentState
 from agent.llm import create_llm
 from collector.cleaner import DataCleaner
 from config.prompts import SWOT_PROMPT
+from utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ async def _generate_swot(merged_data: Dict[str, Any]) -> Dict:
                 info_str = json.dumps(data, ensure_ascii=False, default=str)[:3000]
                 prompt = SWOT_PROMPT.format(competitor_info=info_str)
 
-                response = await llm.ainvoke(prompt)
+                response = await retry_async(lambda: llm.ainvoke(prompt))
                 content = response.content
 
                 # 解析SWOT

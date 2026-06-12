@@ -12,6 +12,7 @@ from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import PLANNING_PROMPT
 from utils.llm_parser import extract_json_from_llm
+from utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ async def plan_analysis(state: AgentState) -> dict:
             dimensions=", ".join(dimensions)
         )
 
-        response = await llm.ainvoke(prompt)
+        response = await retry_async(lambda: llm.ainvoke(prompt))
         content = response.content
 
         # 尝试解析JSON

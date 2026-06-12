@@ -9,6 +9,7 @@ import logging
 from agent.graph_state import AgentState
 from agent.llm import create_llm
 from config.prompts import REPORT_PROMPT
+from utils.retry import retry_async
 from utils.report_helpers import (
     generate_report_header,
     generate_fallback_report,
@@ -36,7 +37,7 @@ async def generate_report(state: AgentState) -> dict:
         analysis_data = _prepare_analysis_data(analysis_results, competitors)
 
         prompt = REPORT_PROMPT.format(analysis_data=analysis_data)
-        response = await llm.ainvoke(prompt)
+        response = await retry_async(lambda: llm.ainvoke(prompt))
         report = response.content
 
         # 添加报告头部

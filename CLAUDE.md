@@ -145,5 +145,12 @@ SERPAPI_KEY=your-serpapi-key
 ## 测试统计
 
 - 测试文件：8个（含 utils/tests/）
-- 测试用例：139个
-- 状态：全部通过（3个异步测试需要 pytest-asyncio）
+- 测试用例：153个
+- 状态：全部通过
+
+## 相关文档
+
+- [OPTIMIZATION_ROADMAP.md](OPTIMIZATION_ROADMAP.md) - 优化路线图
+- [DEVELOPMENT_PROGRESS.md](DEVELOPMENT_PROGRESS.md) - 开发进度
+- [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) - 技术架构
+- [PRD.md](PRD.md) - 产品需求文档

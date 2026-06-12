@@ -9,6 +9,7 @@ import logging
 from agent.graph_state import AgentState
 from collector.web_search import WebSearchCollector
 from config.settings import settings
+from utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,12 @@ async def search_competitors(state: AgentState) -> dict:
             logger.info(f"搜索竞品: {name}")
 
             try:
-                result = await collector.search_competitor(
-                    name,
-                    keywords=keywords if keywords else None,
-                    num_results=5
+                result = await retry_async(
+                    lambda: collector.search_competitor(
+                        name,
+                        keywords=keywords if keywords else None,
+                        num_results=5
+                    )
                 )
 
                 all_results.append({
