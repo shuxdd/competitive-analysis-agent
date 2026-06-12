@@ -88,7 +88,7 @@ async def get_report(
 @router.get("/{report_id}/export")
 async def export_report(
     report_id: str,
-    format: str = Query("markdown", pattern="^(markdown|html)$"),
+    format: str = Query("markdown", pattern="^(markdown|html|pdf)$"),
     session: AsyncSession = Depends(get_session),
 ):
     """导出报告文件"""
@@ -103,7 +103,14 @@ async def export_report(
     content = orm.content
     filename = orm.title
 
-    if format == "html":
+    if format == "pdf":
+        from report.generator import ReportGenerator
+        generator = ReportGenerator()
+        pdf_bytes = generator.export_pdf_bytes(content)
+        buffer = BytesIO(pdf_bytes)
+        media_type = "application/pdf"
+        filename = f"{filename}.pdf"
+    elif format == "html":
         from report.generator import ReportGenerator
         generator = ReportGenerator()
         html_content = generator._markdown_to_html(content)

@@ -8,6 +8,7 @@
 import os
 import logging
 from datetime import datetime
+from io import BytesIO
 from typing import Dict, List, Optional, Any
 
 from agent.llm import create_llm
@@ -115,6 +116,55 @@ class ReportGenerator:
 
         logger.info(f"HTML报告已导出: {filepath}")
         return filepath
+
+    def export_pdf(self, report: str, filename: Optional[str] = None) -> str:
+        """
+        导出PDF文件
+
+        Args:
+            report: Markdown格式的报告内容
+            filename: 文件名（不含扩展名）
+
+        Returns:
+            文件路径
+        """
+        if filename is None:
+            filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        filepath = os.path.join(self.output_dir, f"{filename}.pdf")
+        html_content = self._markdown_to_html(report)
+
+        from xhtml2pdf import pisa
+
+        with open(filepath, "wb") as f:
+            status = pisa.CreatePDF(html_content, dest=f, encoding="utf-8")
+
+        if status.err:
+            raise RuntimeError(f"PDF生成失败: {status.err}")
+
+        logger.info(f"PDF报告已导出: {filepath}")
+        return filepath
+
+    def export_pdf_bytes(self, report: str) -> bytes:
+        """
+        生成PDF字节流（用于API响应）
+
+        Args:
+            report: Markdown格式的报告内容
+
+        Returns:
+            PDF字节内容
+        """
+        html_content = self._markdown_to_html(report)
+        buffer = BytesIO()
+
+        from xhtml2pdf import pisa
+
+        status = pisa.CreatePDF(html_content, dest=buffer, encoding="utf-8")
+        if status.err:
+            raise RuntimeError(f"PDF生成失败: {status.err}")
+
+        return buffer.getvalue()
 
     def _prepare_data(self, analysis_results: Dict, competitors: List[str]) -> str:
         """准备报告数据"""
