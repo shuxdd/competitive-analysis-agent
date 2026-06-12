@@ -58,7 +58,7 @@ utils/          - 工具类
 
 **1. 全量测试**
 - 运行所有测试（不仅是新增的），确认没有破坏已有功能
-- 命令：`pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py tests/test_report.py -v`
+- 命令：`pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py tests/test_report.py tests/test_api.py -v`
 
 **2. 代码质量检查**
 - 是否有未使用的 import
@@ -99,7 +99,7 @@ utils/          - 工具类
 pip install -r requirements.txt
 
 # 运行全部测试
-pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py tests/test_report.py -v
+pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.py tests/test_agent.py tests/test_report.py tests/test_api.py -v
 
 # 运行单个模块测试
 pytest tests/test_agent.py -v
@@ -111,8 +111,8 @@ python examples/collector_demo.py
 python examples/agent_demo.py
 python examples/report_demo.py
 
-# 启动API服务（待开发）
-# uvicorn api.app:app --reload
+# 启动API服务
+uvicorn api.app:app --reload --host 0.0.0.0 --port 8000
 
 # 启动前端（待开发）
 # streamlit run display/app.py
@@ -138,12 +138,12 @@ SERPAPI_KEY=your-serpapi-key
 | config/ | ✅ 完成 | 配置管理 |
 | agent/ | ✅ 完成 | Agent核心（LangGraph状态图） |
 | report/ | ✅ 完成 | 报告生成（模板管理、Markdown/HTML导出） |
-| api/ | ⏳ 待开发 | FastAPI接口 |
+| api/ | ✅ 完成 | FastAPI接口（竞品CRUD、分析任务、报告管理、智能问答） |
 | display/ | ⏳ 待开发 | Streamlit前端 |
 | utils/ | ⏳ 待开发 | 工具类 |
 
 ## 测试统计
 
-- 测试文件：6个
-- 测试用例：63个
+- 测试文件：7个
+- 测试用例：91个
 - 状态：全部通过
