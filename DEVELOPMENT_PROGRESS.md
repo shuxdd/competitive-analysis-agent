@@ -169,34 +169,101 @@
 
 **测试结果**: ✅ 全部通过
 
-### 8. 前端模块 (display/) ⏳
+### 8. 前端模块 (frontend/) ✅
 
-**计划功能**:
-- Streamlit界面
-- 竞品管理界面
-- 分析任务界面
-- 报告查看界面
+**完成时间**: 2026-06-12
+
+**技术栈**: React 18 + TypeScript + Vite 8 + Tailwind CSS 4 + shadcn/ui + Recharts
+
+**主要功能**:
+- 项目基础架构（Vite + TypeScript + Tailwind CSS + shadcn/ui）
+- axios 封装（响应拦截器、自动解包 data 字段）
+- React Query 数据管理
+- React Router 路由配置
+- 主题切换（亮/暗模式，localStorage 持久化）
+- 仪表盘页面（数据概览卡片、最近任务、最近报告）
+- 竞品管理页面（列表、搜索、新建/编辑/删除）
+- 分析任务页面（任务列表、新建分析、状态轮询）
+- 报告中心页面（卡片网格视图、搜索）
+- 智能问答页面（ChatGPT 风格对话、打字机效果）
+
+**UI 组件**:
+- Button、Input、Card、Dialog、Badge
+- Table、Select、Textarea、Tabs
+- Skeleton、Label、Pagination、Checkbox
+
+**文件**:
+- `frontend/src/App.tsx` - 应用入口
+- `frontend/src/main.tsx` - 渲染入口
+- `frontend/src/layouts/MainLayout.tsx` - 主布局
+- `frontend/src/components/layout/Sidebar.tsx` - 侧边栏
+- `frontend/src/components/layout/Topbar.tsx` - 顶部导航
+- `frontend/src/components/ui/` - shadcn/ui 组件
+- `frontend/src/pages/dashboard/` - 仪表盘页面
+- `frontend/src/pages/competitors/` - 竞品管理页面
+- `frontend/src/pages/analysis/` - 分析任务页面
+- `frontend/src/pages/reports/` - 报告中心页面
+- `frontend/src/pages/qa/` - 智能问答页面
+- `frontend/src/lib/api.ts` - API 封装
+- `frontend/src/lib/queryClient.ts` - React Query 配置
+- `frontend/src/lib/utils.ts` - 工具函数
+- `frontend/src/types/index.ts` - TypeScript 类型定义
+- `frontend/src/hooks/useTheme.ts` - 主题切换 hook
+- `frontend/src/styles/globals.css` - 全局样式
+
+**测试结果**: ✅ TypeScript 编译通过，构建成功
+
+### 9. 工具模块 (utils/) ✅
+
+**完成时间**: 2026-06-12
+
+**主要功能**:
+- 日志工具 (logger.py) - 统一的 logging 封装，支持控制台和文件输出
+- 日期工具 (date_utils.py) - 日期格式化、时间戳生成
+- JSON 工具 (json_utils.py) - 序列化/反序列化，支持 datetime 和中文
+- 文本工具 (text_utils.py) - 文本清理、分段
+- LLM 解析工具 (llm_parser.py) - 从 LLM 响应中提取 JSON
+- 元数据工具 (metadata_utils.py) - Chroma 元数据预处理（list/dict 转字符串）
+- 报告辅助工具 (report_helpers.py) - 报告头生成、数据准备、降级报告
+
+**文件**:
+- `utils/__init__.py` - 模块导出
+- `utils/logger.py` - 日志工具
+- `utils/date_utils.py` - 日期工具
+- `utils/json_utils.py` - JSON 工具
+- `utils/text_utils.py` - 文本工具
+- `utils/llm_parser.py` - LLM 解析工具
+- `utils/metadata_utils.py` - 元数据工具
+- `utils/report_helpers.py` - 报告辅助工具
+- `utils/tests/test_logger.py` - 日志测试 (9个测试用例)
+- `utils/tests/test_date_utils.py` - 日期测试 (4个测试用例)
+- `utils/tests/test_json_utils.py` - JSON测试 (6个测试用例)
+- `utils/tests/test_text_utils.py` - 文本测试 (9个测试用例)
+- `utils/tests/test_llm_parser.py` - LLM解析测试 (7个测试用例)
+- `utils/tests/test_metadata_utils.py` - 元数据测试 (7个测试用例)
+- `utils/tests/test_report_helpers.py` - 报告辅助测试 (6个测试用例)
+
+**测试结果**: ✅ 全部通过（48个测试用例）
 
 ## 开发统计
 
 | 指标 | 数量 |
 |------|------|
-| 已完成模块 | 7/8 |
-| Python文件 | 50+个 |
-| 测试文件 | 7个 |
-| 测试用例 | 91个 |
-| 代码行数 | ~5500行 |
+| 已完成模块 | 9/9 |
+| Python文件 | 55+个 |
+| 前端文件 | 30+个 |
+| 测试文件 | 8个 |
+| 测试用例 | 139个 |
+| Python代码行数 | ~6000行 |
+| 前端代码行数 | ~3000行 |
 
 ## 下一步计划
 
-1. **开发前端模块** (display/)
-   - 实现Streamlit界面
-   - 创建竞品管理界面
-   - 创建分析任务界面
-
-3. **开发工具模块** (utils/)
-   - 实现日志工具
-   - 其他通用工具
+1. **前端功能增强**
+   - 添加数据可视化图表（Recharts）
+   - 实现报告详情页（Markdown 渲染）
+   - 添加表单验证（react-hook-form + zod）
+   - 优化移动端响应式布局
 
 ## 技术债务
 
@@ -208,7 +275,22 @@
 
 ## 更新日志
 
-### 2026-06-12
+### 2026-06-12 (晚上)
+- 完成工具模块（utils/）：日志、日期、JSON、文本、LLM解析、元数据、报告辅助
+- 重构现有模块（agent/、report/、collector/、knowledge/）使用 utils 工具函数
+- 添加 utils 模块单元测试（48个测试用例，全部通过）
+
+### 2026-06-12 (下午)
+- 完成前端模块（React 18 + TypeScript + Vite 8 + Tailwind CSS 4）
+- 实现仪表盘页面（数据概览、最近任务/报告）
+- 实现竞品管理页面（列表、搜索、新建/编辑/删除）
+- 实现分析任务页面（任务列表、新建分析、状态轮询）
+- 实现报告中心页面（卡片网格视图、搜索）
+- 实现智能问答页面（ChatGPT 风格对话、打字机效果）
+- 集成 shadcn/ui 组件库（13 个组件）
+- 配置 axios 封装、React Query、主题切换
+
+### 2026-06-12 (上午)
 - 完成API接口模块（FastAPI应用、数据库ORM、14个API端点、28个测试用例）
 - 竞品管理CRUD接口
 - 异步分析任务（提交/查询/取消）
