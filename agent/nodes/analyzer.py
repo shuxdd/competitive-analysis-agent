@@ -12,6 +12,7 @@ from agent.graph_state import AgentState
 from agent.llm import create_llm
 from collector.cleaner import DataCleaner
 from config.prompts import SWOT_PROMPT
+from utils.llm_parser import extract_json_from_llm
 from utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
@@ -150,16 +151,8 @@ async def _generate_swot(merged_data: Dict[str, Any]) -> Dict:
                 content = response.content
 
                 # 解析SWOT
-                try:
-                    if "```json" in content:
-                        json_str = content.split("```json")[1].split("```")[0].strip()
-                    elif "```" in content:
-                        json_str = content.split("```")[1].split("```")[0].strip()
-                    else:
-                        json_str = content.strip()
-
-                    swot = json.loads(json_str)
-                except json.JSONDecodeError:
+                swot = extract_json_from_llm(content)
+                if swot is None:
                     swot = {"raw_response": content}
 
                 swot_results[name] = swot
