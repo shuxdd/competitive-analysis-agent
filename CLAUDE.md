@@ -116,6 +116,11 @@ uvicorn api.app:app --reload --host 0.0.0.0 --port 8000
 
 # 启动前端
 cd frontend && npm run dev
+
+# 写入种子数据（启动API后运行）
+python seed.py              # 写入15个竞品
+python seed.py --clear      # 清空后重新写入
+python seed.py --dry-run    # 仅预览，不写入
 ```
 
 ## 环境配置
@@ -126,6 +131,7 @@ cd frontend && npm run dev
 OPENAI_API_KEY=your-mimo-api-key
 OPENAI_API_BASE=https://api.mimo.com/v1
 SERPAPI_KEY=your-serpapi-key
+GITHUB_TOKEN=your-github-token（可选，无限流限制）
 ```
 
 ## 模块状态
@@ -134,7 +140,7 @@ SERPAPI_KEY=your-serpapi-key
 |------|------|------|
 | models/ | ✅ 完成 | 数据模型（竞品、分析、报告） |
 | knowledge/ | ✅ 完成 | 知识库（向量存储、RAG） |
-| collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗） |
+| collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗、GitHub、应用商店） |
 | config/ | ✅ 完成 | 配置管理 |
 | agent/ | ✅ 完成 | Agent核心（LangGraph状态图） |
 | report/ | ✅ 完成 | 报告生成（模板管理、Markdown/HTML导出） |
