@@ -5,7 +5,6 @@
 生成和导出竞品分析报告。
 """
 
-import json
 import os
 import logging
 from datetime import datetime
@@ -14,6 +13,11 @@ from typing import Dict, List, Optional, Any
 from agent.llm import create_llm
 from config.settings import settings
 from report.templates import ReportTemplates
+from utils.report_helpers import (
+    generate_report_header,
+    prepare_analysis_data,
+    generate_fallback_report,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,75 +120,28 @@ class ReportGenerator:
         """准备报告数据"""
         data = {
             "competitors": competitors,
-            "analysis_summary": analysis_results.get("summary", ""),
-            "feature_matrix": analysis_results.get("feature_matrix", {}),
-            "pricing_comparison": analysis_results.get("pricing_comparison", {}),
-            "swot_analysis": analysis_results.get("swot_analysis", {}),
-            "review_analysis": analysis_results.get("review_analysis", {}),
+            **analysis_results,
         }
-        return json.dumps(data, ensure_ascii=False, indent=2, default=str)
+        return prepare_analysis_data(data)
 
     def _generate_header(self, competitors: List[str], report_type: str) -> str:
         """生成报告头部"""
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        type_names = {"quick": "快速", "standard": "标准", "deep": "深度"}
-
-        return f"""# 竞品分析报告
-
-> 生成时间: {now}
-> 分析类型: {type_names.get(report_type, report_type)}
-> 竞品数量: {len(competitors)}
-> 竞品列表: {', '.join(competitors)}
-
----"""
+        return generate_report_header(
+            title="竞品分析报告",
+            competitors=competitors,
+            report_type=report_type,
+        )
 
     def _generate_fallback(
         self, analysis_results: Dict, competitors: List[str], report_type: str
     ) -> str:
         """降级报告生成"""
-        header = self._generate_header(competitors, report_type)
-        sections = [header, "\n## 分析摘要\n"]
-
-        sections.append(analysis_results.get("summary", "暂无摘要"))
-
-        # 功能矩阵
-        matrix = analysis_results.get("feature_matrix", {})
-        if matrix and matrix.get("features"):
-            sections.append("\n## 功能对比\n")
-            for feature in matrix["features"][:10]:
-                sections.append(f"- {feature}")
-
-        # 定价对比
-        pricing = analysis_results.get("pricing_comparison", {})
-        if pricing and pricing.get("competitors"):
-            sections.append("\n## 定价对比\n")
-            for name, info in pricing["competitors"].items():
-                if info.get("prices"):
-                    prices = ", ".join(
-                        f"{p.get('currency', '')} {p.get('price', '')}"
-                        for p in info["prices"][:3]
-                    )
-                    sections.append(f"- **{name}**: {prices}")
-                else:
-                    sections.append(f"- **{name}**: 暂无定价信息")
-
-        # SWOT
-        swot = analysis_results.get("swot_analysis", {})
-        if swot:
-            sections.append("\n## SWOT分析\n")
-            for name, s in swot.items():
-                sections.append(f"\n### {name}\n")
-                if isinstance(s, dict):
-                    for key in ["strengths", "weaknesses", "opportunities", "threats"]:
-                        if key in s:
-                            sections.append(f"\n**{key.title()}**:")
-                            for item in s[key][:3]:
-                                sections.append(f"- {item}")
-
-        sections.append(
-            f"\n\n---\n*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}*"
-        )
-        return "\n".join(sections)
+        competitor_name = "、".join(competitors) if competitors else "未知竞品"
+        analysis_data = {
+            **analysis_results,
+            "analysis_summary": analysis_results.get("summary", ""),
+        }
+        return generate_fallback_report(competitor_name, analysis_data)
 
     def _markdown_to_html(self, markdown_text: str) -> str:
         """Markdown转HTML"""
