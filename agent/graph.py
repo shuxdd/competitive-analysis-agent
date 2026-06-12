@@ -19,11 +19,22 @@ from agent.nodes.reporter import generate_report
 logger = logging.getLogger(__name__)
 
 
+def _route_after_searcher(state: AgentState) -> str:
+    """搜索后的条件路由：quick 直接跳到 reporter，其他继续爬取"""
+    analysis_type = state.get("analysis_type", "standard")
+    if analysis_type == "quick":
+        return "reporter"
+    return "scraper"
+
+
 def create_analysis_graph():
     """
     创建竞品分析状态图
 
-    流程: planner -> searcher -> scraper -> extractor -> analyzer -> reporter
+    流程:
+    - quick:    planner -> searcher -> reporter
+    - standard: planner -> searcher -> scraper -> extractor -> analyzer -> reporter
+    - deep:     planner -> searcher -> scraper -> extractor -> analyzer -> reporter
 
     Returns:
         编译后的状态图
@@ -40,10 +51,20 @@ def create_analysis_graph():
     graph.add_node("analyzer", analyze_competitors)
     graph.add_node("reporter", generate_report)
 
-    # 设置边（线性流程）
+    # 设置边
     graph.add_edge(START, "planner")
     graph.add_edge("planner", "searcher")
-    graph.add_edge("searcher", "scraper")
+
+    # 条件分支：quick 跳过爬取/提取/分析
+    graph.add_conditional_edges(
+        "searcher",
+        _route_after_searcher,
+        {
+            "reporter": "reporter",
+            "scraper": "scraper",
+        },
+    )
+
     graph.add_edge("scraper", "extractor")
     graph.add_edge("extractor", "analyzer")
     graph.add_edge("analyzer", "reporter")
