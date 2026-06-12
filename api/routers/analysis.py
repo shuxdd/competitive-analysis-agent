@@ -44,6 +44,12 @@ async def _run_analysis(task_id: str):
     """后台执行分析任务"""
     from api.database import async_session
     from agent.graph import create_analysis_graph
+    from api.app import progress_manager
+
+    def on_progress(node: str, progress: int, message: str):
+        """同步回调 -> 异步推送"""
+        loop = asyncio.get_event_loop()
+        loop.create_task(progress_manager.send_progress(task_id, node, progress, message))
 
     async with async_session() as session:
         try:
@@ -73,6 +79,7 @@ async def _run_analysis(task_id: str):
                 "report": "",
                 "status": "collecting",
                 "errors": [],
+                "progress_callback": on_progress,
             })
 
             task.status = "completed"

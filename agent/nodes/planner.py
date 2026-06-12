@@ -13,6 +13,7 @@ from agent.llm import create_llm
 from config.prompts import PLANNING_PROMPT
 from utils.llm_parser import extract_json_from_llm
 from utils.retry import retry_async
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ async def plan_analysis(state: AgentState) -> dict:
             plan = _generate_default_plan(competitors, dimensions)
 
         logger.info(f"任务规划完成，计划包含 {len(plan.get('competitors', []))} 个竞品")
+        report_progress(state.get("progress_callback"), "planner")
         return {
             "collection_plan": plan,
             "status": "planning",
@@ -62,6 +64,7 @@ async def plan_analysis(state: AgentState) -> dict:
         logger.error(f"任务规划失败: {e}")
         # 使用默认计划作为降级
         plan = _generate_default_plan(competitors, dimensions)
+        report_progress(state.get("progress_callback"), "planner")
         return {
             "collection_plan": plan,
             "status": "planning",

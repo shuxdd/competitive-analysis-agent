@@ -14,6 +14,7 @@ from collector.cleaner import DataCleaner
 from config.prompts import SWOT_PROMPT
 from utils.llm_parser import extract_json_from_llm
 from utils.retry import retry_async
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ async def analyze_competitors(state: AgentState) -> dict:
         analysis_results["summary"] = _generate_summary(merged_data, dimensions)
 
         logger.info("分析对比完成")
+        report_progress(state.get("progress_callback"), "analyzer")
         return {
             "analysis_results": analysis_results,
             "status": "analyzing",

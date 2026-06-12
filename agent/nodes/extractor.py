@@ -11,6 +11,7 @@ from agent.llm import create_llm
 from config.prompts import EXTRACTION_PROMPT
 from utils.llm_parser import extract_json_from_llm
 from utils.retry import retry_async
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ async def extract_info(state: AgentState) -> dict:
                 })
 
         logger.info(f"信息提取完成，共处理 {len(extracted)} 个页面")
+        report_progress(state.get("progress_callback"), "extractor")
         return {
             "extracted_info": extracted,
             "status": "extracting",

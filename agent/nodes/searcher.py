@@ -10,6 +10,7 @@ from agent.graph_state import AgentState
 from collector.web_search import WebSearchCollector
 from config.settings import settings
 from utils.retry import retry_async
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ async def search_competitors(state: AgentState) -> dict:
                 })
 
         logger.info(f"搜索完成，共处理 {len(competitors)} 个竞品")
+        report_progress(state.get("progress_callback"), "searcher")
         return {
             "raw_data": all_results,
             "status": "collecting",

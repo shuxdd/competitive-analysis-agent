@@ -16,6 +16,7 @@ from utils.report_helpers import (
     generate_fallback_report,
     prepare_analysis_data,
 )
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ async def generate_report(state: AgentState) -> dict:
         full_report = header + "\n\n" + report
 
         logger.info(f"报告生成完成，长度: {len(full_report)} 字符")
+        report_progress(state.get("progress_callback"), "reporter")
         return {
             "report": full_report,
             "status": "completed",

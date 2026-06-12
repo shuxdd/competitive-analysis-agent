@@ -5,7 +5,7 @@ Agent状态定义
 定义LangGraph状态图的状态结构。
 """
 
-from typing import List, Optional, Annotated
+from typing import List, Optional, Annotated, Callable, Any
 from typing_extensions import TypedDict
 import operator
 
@@ -29,3 +29,6 @@ class AgentState(TypedDict):
     report: str
     status: str
     errors: List[str]
+
+    # 进度回调（可选）
+    progress_callback: Optional[Callable[[str, int, str], Any]]

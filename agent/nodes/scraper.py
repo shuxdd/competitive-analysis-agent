@@ -10,6 +10,7 @@ from agent.graph_state import AgentState
 from collector.web_scraper import WebScraperCollector
 from collector.cleaner import DataCleaner
 from config.settings import settings
+from agent.progress import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ async def scrape_data(state: AgentState) -> dict:
 
         scraper.close()
         logger.info(f"爬取完成，共获取 {len(all_scraped)} 个页面")
+        report_progress(state.get("progress_callback"), "scraper")
 
         return {
             "raw_data": all_scraped,
