@@ -2,7 +2,7 @@
 搜索节点
 ========
 
-使用搜索引擎、GitHub、应用商店、华为应用市场等多数据源并行采集竞品信息。
+使用搜索引擎、GitHub 等多数据源并行采集竞品信息。
 """
 
 import asyncio
@@ -10,8 +10,7 @@ import logging
 from agent.graph_state import AgentState
 from collector.web_search import WebSearchCollector
 from collector.github_collector import GitHubCollector
-from collector.app_store_collector import AppStoreCollector
-from collector.huawei_collector import HuaweiCollector
+from collector.apify_collector import ApifyCollector
 from config.settings import settings
 from utils.retry import retry_async
 from agent.progress import report_progress
@@ -24,26 +23,20 @@ GITHUB_REPOS = {
     "obsidian": "obsidianmd/obsidian-releases",
 }
 
-# 竞品名称到 Google Play 应用 ID 的映射
+# 竞品名称到 Google Play 包名的映射
 GOOGLE_PLAY_APPS = {
-    "notion": "notion.id",
-    "obsidian": "md.obsidian",
     "钉钉": "com.alibaba.android.rimet",
     "企业微信": "com.tencent.wework",
+    "飞书": "com.ss.android.lark",
     "飞书文档": "com.ss.android.lark",
 }
 
-# 竞品名称到华为应用市场包名的映射
-HUAWEI_APPS = {
-    "钉钉": "com.alibaba.android.rimet",
-    "企业微信": "com.tencent.wework",
-    "飞书文档": "com.ss.android.lark",
-    "文心一言": "com.baidu.baiduapp",
-    "通义千问": "com.aliyun.tongyi",
-    "小红书": "com.xingin.xhs",
-    "知乎": "com.zhihu.android",
-    "B站": "tv.danmaku.bili",
-    "有赞": "com.youzan.shop",
+# 竞品名称到 App Store ID 的映射
+APP_STORE_APPS = {
+    "钉钉": "982102496",
+    "企业微信": "982102496",
+    "飞书": "982102496",
+    "飞书文档": "982102496",
 }
 
 # 标签到数据源的映射
@@ -51,9 +44,10 @@ TAG_DATA_SOURCES = {
     "开源": ["github"],
     "开发者工具": ["github"],
     "GitHub": ["github"],
-    "App": ["app_store"],
-    "移动": ["app_store"],
-    "C端": ["app_store"],
+    "移动端": ["google_play", "app_store"],
+    "移动应用": ["google_play", "app_store"],
+    "iOS": ["app_store"],
+    "Android": ["google_play"],
 }
 
 
@@ -74,8 +68,7 @@ async def _collect_one(
     plan: dict,
     search_collector: WebSearchCollector,
     github_collector: GitHubCollector,
-    app_store_collector: AppStoreCollector,
-    huawei_collector: HuaweiCollector,
+    apify_collector: ApifyCollector,
 ) -> list:
     """
     采集单个竞品的所有数据源（并行执行）
@@ -118,31 +111,32 @@ async def _collect_one(
             tasks.append(_gh())
 
     # 3. Google Play（按需）
-    if "app_store" in extra_sources or name_lower in GOOGLE_PLAY_APPS:
+    if "google_play" in extra_sources or name_lower in GOOGLE_PLAY_APPS:
         app_id = GOOGLE_PLAY_APPS.get(name_lower)
         if app_id:
             async def _gp(aid=app_id):
                 try:
-                    result = await app_store_collector.run(aid, store="google")
-                    logger.info(f"  [{name}] 应用商店完成: ⭐{result.get('data', {}).get('rating', 0)}")
-                    return {"competitor": name, "source": "app_store", "data": result.get("data", {})}
+                    result = await apify_collector.run(aid, store="google")
+                    logger.info(f"  [{name}] Google Play 完成: ⭐{result.get('data', {}).get('rating', 0)}")
+                    return {"competitor": name, "source": "google_play", "data": result.get("data", {})}
                 except Exception as e:
-                    logger.warning(f"  [{name}] 应用商店失败: {e}")
+                    logger.warning(f"  [{name}] Google Play 失败: {e}")
                     return None
             tasks.append(_gp())
 
-    # 4. 华为应用市场（按需，有密钥文件时启用）
-    if name_lower in HUAWEI_APPS and settings.huawei_key_file:
-        pkg_name = HUAWEI_APPS[name_lower]
-        async def _hw(pkg=pkg_name):
-            try:
-                result = await huawei_collector.run(pkg, max_size=30)
-                logger.info(f"  [{name}] 华为完成: ⭐{result.get('data', {}).get('rating', 0)}")
-                return {"competitor": name, "source": "huawei", "data": result.get("data", {})}
-            except Exception as e:
-                logger.warning(f"  [{name}] 华为失败: {e}")
-                return None
-        tasks.append(_hw())
+    # 4. App Store（按需）
+    if "app_store" in extra_sources or name_lower in APP_STORE_APPS:
+        app_id = APP_STORE_APPS.get(name_lower)
+        if app_id:
+            async def _as(aid=app_id):
+                try:
+                    result = await apify_collector.run(aid, store="apple")
+                    logger.info(f"  [{name}] App Store 完成: ⭐{result.get('data', {}).get('rating', 0)}")
+                    return {"competitor": name, "source": "app_store", "data": result.get("data", {})}
+                except Exception as e:
+                    logger.warning(f"  [{name}] App Store 失败: {e}")
+                    return None
+            tasks.append(_as())
 
     # 并行执行所有数据源采集
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -165,8 +159,6 @@ async def search_competitors(state: AgentState) -> dict:
     并行采集所有竞品的多个数据源：
     - 网页搜索（始终执行）
     - GitHub（按标签或映射表）
-    - 应用商店（按标签或映射表）
-    - 华为应用市场（按映射表 + 有密钥）
     """
     logger.info("开始搜索竞品信息...")
 
@@ -176,8 +168,7 @@ async def search_competitors(state: AgentState) -> dict:
     # 初始化采集器
     search_collector = WebSearchCollector(api_key=settings.serpapi_key)
     github_collector = GitHubCollector(token=settings.github_token)
-    app_store_collector = AppStoreCollector()
-    huawei_collector = HuaweiCollector()
+    apify_collector = ApifyCollector()
 
     # 构建所有竞品的采集任务
     comp_tasks = []
@@ -188,7 +179,7 @@ async def search_competitors(state: AgentState) -> dict:
 
         comp_tasks.append(_collect_one(
             name, keywords, plan,
-            search_collector, github_collector, app_store_collector, huawei_collector,
+            search_collector, github_collector, apify_collector,
         ))
 
     # 所有竞品并行采集

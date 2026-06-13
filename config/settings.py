@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     # GitHub配置
     github_token: str = ""
 
-    # 华为应用市场配置
-    huawei_key_file: str = ""
+    # Apify配置
+    apify_api_token: str = ""
 
     # 爬虫配置
     scrape_timeout: int = 30

@@ -10,8 +10,7 @@ from .web_search import WebSearchCollector
 from .web_scraper import WebScraperCollector
 from .cleaner import DataCleaner
 from .github_collector import GitHubCollector
-from .app_store_collector import AppStoreCollector
-from .huawei_collector import HuaweiCollector
+from .apify_collector import ApifyCollector
 
 __all__ = [
     "BaseCollector",
@@ -20,6 +19,5 @@ __all__ = [
     "WebScraperCollector",
     "DataCleaner",
     "GitHubCollector",
-    "AppStoreCollector",
-    "HuaweiCollector",
+    "ApifyCollector",
 ]
