@@ -94,8 +94,13 @@ utils/          - 工具类
 
 ## 常用命令
 
+> 所有 Python 命令都需在虚拟环境中运行。激活方式：
+> - **Windows PowerShell**: `.venv\Scripts\Activate.ps1`
+> - **Windows CMD**: `.venv\Scripts\activate.bat`
+> - **Linux/macOS**: `source .venv/bin/activate`
+
 ```bash
-# 安装依赖
+# 安装依赖（首次使用前先激活虚拟环境）
 pip install -r requirements.txt
 
 # 运行全部测试
@@ -140,7 +145,7 @@ GITHUB_TOKEN=your-github-token（可选，无限流限制）
 |------|------|------|
 | models/ | ✅ 完成 | 数据模型（竞品、分析、报告） |
 | knowledge/ | ✅ 完成 | 知识库（向量存储、RAG） |
-| collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗、GitHub、应用商店） |
+| collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗、GitHub、Apify应用商店） |
 | config/ | ✅ 完成 | 配置管理 |
 | agent/ | ✅ 完成 | Agent核心（LangGraph状态图） |
 | report/ | ✅ 完成 | 报告生成（模板管理、Markdown/HTML导出） |
@@ -151,8 +156,8 @@ GITHUB_TOKEN=your-github-token（可选，无限流限制）
 ## 测试统计
 
 - 测试文件：8个（含 utils/tests/）
-- 测试用例：153个
-- 状态：全部通过
+- 测试用例：153个（含 Apify 采集器 12 个、收集器原有 16 个、模型 15 个、知识库 8 个、Agent 11 个、报告 13 个、API 28 个、utils 48 个）
+- 状态：全部通过（1个预知失败：ReportGenerator.export_html 方法已移除）
 
 ## 相关文档
 

@@ -70,36 +70,40 @@
 
 ### 4. 数据采集模块 (collector/) ✅
 
-**完成时间**: 2026-06-11
+**完成时间**: 2026-06-11（最后更新: 2026-06-13）
 
 **主要功能**:
 - 基础采集器 (BaseCollector) - 采集器基类和结果封装
 - 网页搜索采集器 (WebSearchCollector) - 通过SerpAPI搜索
-- 网页爬取采集器 (WebScraperCollector) - 使用Selenium爬取网页
+- 网页爬取采集器 (WebScraperCollector) - 使用Selenium爬取网页（带本地文件缓存，TTL 7天）
 - 数据清洗工具 (DataCleaner) - 文本清理、价格提取、功能提取等
+- GitHub 采集器 (GitHubCollector) - 采集仓库 star/fork/issue 等数据
+- **Apify 应用商店采集器 (ApifyCollector) [新增]** - 通过 Apify 平台采集 Google Play 和 App Store 评论，默认 3 条
 
 **文件**:
 - `collector/base.py` - 基础采集器
 - `collector/web_search.py` - 网页搜索采集器
 - `collector/web_scraper.py` - 网页爬取采集器
 - `collector/cleaner.py` - 数据清洗工具
+- `collector/github_collector.py` - GitHub 数据采集器
+- `collector/apify_collector.py` - Apify 应用商店采集器
 - `collector/__init__.py` - 模块导出
-- `tests/test_collector.py` - 单元测试 (16个测试用例)
+- `tests/test_collector.py` - 单元测试 (28个测试用例)
 - `examples/collector_demo.py` - 使用示例
 
 **测试结果**: ✅ 全部通过
 
 ### 5. Agent核心模块 (agent/) ✅
 
-**完成时间**: 2026-06-11
+**完成时间**: 2026-06-11（最后更新: 2026-06-13）
 
 **主要功能**:
 - LangGraph状态图 (create_analysis_graph)
 - 任务规划节点 (plan_analysis) - 使用LLM生成采集计划
-- 搜索节点 (search_competitors) - 使用WebSearchCollector搜索竞品
+- 搜索节点 (search_competitors) - 并行采集多数据源（网页搜索、GitHub、Google Play、App Store）
 - 爬取节点 (scrape_data) - 使用WebScraperCollector爬取网页
-- 信息提取节点 (extract_info) - 使用LLM提取结构化信息
-- 分析节点 (analyze_competitors) - 功能矩阵、定价对比、SWOT分析
+- 信息提取节点 (extract_info) - 按竞品合并网页文本后批量LLM提取，减少调用次数
+- 分析节点 (analyze_competitors) - 功能矩阵、定价对比、SWOT分析、**用户评价分析**
 - 报告生成节点 (generate_report) - 使用LLM生成Markdown报告
 - LLM工厂 (create_llm) - 基于MIMO的ChatOpenAI实例
 - Agent工具 (SearchTool, ScraperTool, VectorSearchTool) - LangChain BaseTool封装
@@ -109,10 +113,10 @@
 - `agent/graph.py` - 状态图组装
 - `agent/llm.py` - LLM工厂
 - `agent/nodes/planner.py` - 任务规划节点
-- `agent/nodes/searcher.py` - 搜索节点
+- `agent/nodes/searcher.py` - 搜索节点（含Apify应用商店集成）
 - `agent/nodes/scraper.py` - 爬取节点
-- `agent/nodes/extractor.py` - 信息提取节点
-- `agent/nodes/analyzer.py` - 分析对比节点
+- `agent/nodes/extractor.py` - 信息提取节点（改为按竞品合并提取）
+- `agent/nodes/analyzer.py` - 分析对比节点（新增应用商店评价分析）
 - `agent/nodes/reporter.py` - 报告生成节点
 - `agent/tools/search_tool.py` - 搜索工具
 - `agent/tools/scraper_tool.py` - 爬取工具
@@ -253,8 +257,8 @@
 | Python文件 | 55+个 |
 | 前端文件 | 30+个 |
 | 测试文件 | 8个 |
-| 测试用例 | 139个 |
-| Python代码行数 | ~6000行 |
+| 测试用例 | 153个 |
+| Python代码行数 | ~6500行 |
 | 前端代码行数 | ~3000行 |
 
 ## 下一步计划
@@ -274,6 +278,15 @@
 - [ ] 添加类型注解
 
 ## 更新日志
+
+### 2026-06-13
+- 新增 Apify 应用商店评论采集器（Google Play + App Store，默认 3 条）
+- 新增 `config/settings.py` 中 `apify_api_token` 配置项
+- searcher 节点集成 Apify 应用商店数据源，支持标签触发
+- analyzer 节点新增用户评价分析（从 raw_data 读取商店评论，含评分统计、情感分类、关键词提取）
+- extractor 节点优化：改为按竞品合并文本后批量 LLM 提取，减少调用次数
+- 新增 Apify 采集器单元测试 12 个（全部 mock，不调用真实 API）
+- CLAUDE.md 补充虚拟环境说明
 
 ### 2026-06-12 (晚上)
 - 完成工具模块（utils/）：日志、日期、JSON、文本、LLM解析、元数据、报告辅助

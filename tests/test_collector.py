@@ -11,6 +11,7 @@ from collector.base import BaseCollector, CollectorResult
 from collector.web_search import WebSearchCollector
 from collector.web_scraper import WebScraperCollector
 from collector.cleaner import DataCleaner
+from collector.apify_collector import ApifyCollector
 
 
 class TestBaseCollector:
@@ -211,6 +212,251 @@ class TestWebScraperCollector:
         # 即使没有BeautifulSoup，也应该能处理
         result = collector.parse(raw_data)
         assert result["url"] == "https://example.com"
+
+
+class TestApifyCollector:
+    """Apify 采集器测试"""
+
+    def test_initialization_default_token(self):
+        """测试默认初始化（从 settings 读取 token）"""
+        collector = ApifyCollector()
+        assert collector.name == "apify"
+
+    def test_initialization_custom_token(self):
+        """测试自定义 token"""
+        collector = ApifyCollector(api_token="custom_token")
+        assert collector.api_token == "custom_token"
+
+    # ── parse ──────────────────────────────────────────────
+
+    def test_parse_google_play(self):
+        """测试 Google Play 评论解析"""
+        collector = ApifyCollector(api_token="test")
+
+        raw_data = {
+            "app_id": "com.example.app",
+            "store": "google",
+            "reviews": [
+                {"userName": "用户A", "text": "很好用", "score": 5, "at": "2024-01-15", "version": "1.0"},
+                {"userName": "用户B", "text": "一般", "score": 3, "at": "2024-01-10"},
+                {"userName": "用户C", "text": "不好用", "score": 1, "at": "2024-01-05", "version": "1.1"},
+            ],
+        }
+
+        result = collector.parse(raw_data)
+
+        assert result["store"] == "google_play"
+        assert result["app_id"] == "com.example.app"
+        assert result["rating"] == 3.0  # (5+3+1)/3
+        assert result["ratings_count"] == 3
+        assert len(result["reviews"]) == 3
+        assert result["reviews"][0]["user"] == "用户A"
+        assert result["reviews"][0]["text"] == "很好用"
+        assert result["reviews"][0]["rating"] == 5
+
+    def test_parse_app_store(self):
+        """测试 App Store 评论解析"""
+        collector = ApifyCollector(api_token="test")
+
+        raw_data = {
+            "app_id": "123456789",
+            "store": "apple",
+            "reviews": [
+                {"userName": "User X", "text": "Great app", "score": 5, "date": "2024-02-01"},
+                {"userName": "User Y", "text": "Good", "score": 4, "date": "2024-01-20"},
+            ],
+        }
+
+        result = collector.parse(raw_data)
+
+        assert result["store"] == "app_store"
+        assert result["rating"] == 4.5
+        assert result["ratings_count"] == 2
+        assert len(result["reviews"]) == 2
+        assert result["reviews"][1]["user"] == "User Y"
+
+    def test_parse_google_play_text_fallback(self):
+        """测试 Google Play text/content 字段兼容"""
+        collector = ApifyCollector(api_token="test")
+
+        raw_data = {
+            "app_id": "com.example.app",
+            "store": "google",
+            "reviews": [
+                {"userName": "用户A", "content": "content 字段内容", "score": 4},
+            ],
+        }
+
+        result = collector.parse(raw_data)
+        assert result["reviews"][0]["text"] == "content 字段内容"
+
+    def test_parse_error_status(self):
+        """测试错误状态直接返回"""
+        collector = ApifyCollector(api_token="test")
+
+        raw_data = {
+            "app_id": "com.example.app",
+            "store": "google",
+            "error": "API token 无效",
+            "status": "error",
+        }
+
+        result = collector.parse(raw_data)
+        assert result["status"] == "error"
+        assert result["error"] == "API token 无效"
+
+    def test_parse_empty_reviews(self):
+        """测试空评论列表"""
+        collector = ApifyCollector(api_token="test")
+
+        raw_data = {
+            "app_id": "com.example.app",
+            "store": "google",
+            "reviews": [],
+        }
+
+        result = collector.parse(raw_data)
+        assert result["rating"] == 0
+        assert result["ratings_count"] == 0
+        assert result["reviews"] == []
+
+    # ── clean ──────────────────────────────────────────────
+
+    def test_clean_removes_empty_reviews(self):
+        """清洗应移除无文本且无评分的评论"""
+        collector = ApifyCollector(api_token="test")
+
+        data = {
+            "store": "google_play",
+            "rating": 4.0,
+            "reviews": [
+                {"user": "用户A", "text": "正常评论", "rating": 5},
+                {"user": "用户B", "text": "", "rating": 0},  # 空文本+0分
+                {"user": "用户C", "text": "", "rating": 3},  # 有评分，保留
+            ],
+        }
+
+        cleaned = collector.clean(data)
+        assert len(cleaned["reviews"]) == 2
+
+    # ── collect (mock, 不调用真实 API) ──────────────────────
+
+    @pytest.mark.asyncio
+    async def test_collect_google_play_success(self):
+        """测试 Google Play 采集成功（mock Apify API）"""
+        collector = ApifyCollector(api_token="test_token")
+
+        # mock 返回的评论数据
+        mock_reviews = [
+            {"userName": "用户A", "text": "好用", "score": 5},
+            {"userName": "用户B", "text": "还行", "score": 4},
+        ]
+
+        # 注入 mock apify_client 模块，避免真实导入
+        import sys
+        from unittest.mock import MagicMock
+
+        mock_apify_module = MagicMock()
+        mock_client_instance = MagicMock()
+
+        mock_actor_instance = MagicMock()
+        mock_actor_instance.call.return_value = {"defaultDatasetId": "ds-123"}
+
+        mock_dataset_instance = MagicMock()
+        mock_dataset_instance.iterate_items.return_value = iter(mock_reviews)
+
+        mock_client_instance.actor.return_value = mock_actor_instance
+        mock_client_instance.dataset.return_value = mock_dataset_instance
+        mock_apify_module.ApifyClient.return_value = mock_client_instance
+
+        with (
+            patch.object(collector._cache, "get", return_value=None),
+            patch.object(collector._cache, "set"),
+            patch.dict("sys.modules", {"apify_client": mock_apify_module}),
+        ):
+            result = await collector.collect("com.example.app", store="google")
+
+        assert result["app_id"] == "com.example.app"
+        assert result["store"] == "google"
+        assert result["total_fetched"] == 2
+        assert len(result["reviews"]) == 2
+        mock_client_instance.actor.assert_called_once_with(
+            "neatrat/google-play-store-reviews-scraper"
+        )
+
+    @pytest.mark.asyncio
+    async def test_collect_app_store_success(self):
+        """测试 App Store 采集成功（mock Apify API）"""
+        collector = ApifyCollector(api_token="test_token")
+
+        import sys
+        from unittest.mock import MagicMock
+
+        mock_reviews = [{"userName": "User A", "text": "Great!", "score": 5}]
+
+        mock_apify_module = MagicMock()
+        mock_client_instance = MagicMock()
+
+        mock_actor_instance = MagicMock()
+        mock_actor_instance.call.return_value = {"defaultDatasetId": "ds-456"}
+
+        mock_dataset_instance = MagicMock()
+        mock_dataset_instance.iterate_items.return_value = iter(mock_reviews)
+
+        mock_client_instance.actor.return_value = mock_actor_instance
+        mock_client_instance.dataset.return_value = mock_dataset_instance
+        mock_apify_module.ApifyClient.return_value = mock_client_instance
+
+        with (
+            patch.object(collector._cache, "get", return_value=None),
+            patch.object(collector._cache, "set"),
+            patch.dict("sys.modules", {"apify_client": mock_apify_module}),
+        ):
+            result = await collector.collect("123456789", store="apple")
+
+        assert result["store"] == "apple"
+        assert result["total_fetched"] == 1
+        mock_client_instance.actor.assert_called_once_with(
+            "thewolves/appstore-reviews-scraper"
+        )
+
+    @pytest.mark.asyncio
+    async def test_collect_cache_hit(self):
+        """测试缓存命中时跳过 API 调用"""
+        collector = ApifyCollector(api_token="test_token")
+
+        import sys
+        from unittest.mock import MagicMock
+
+        cached_data = {"app_id": "com.example.app", "store": "google", "reviews": [], "total_fetched": 0}
+
+        with (
+            patch.object(collector._cache, "get", return_value=cached_data),
+            patch.dict("sys.modules", {"apify_client": MagicMock()}),
+        ):
+            result = await collector.collect("com.example.app", store="google")
+
+        assert result == cached_data
+
+    @pytest.mark.asyncio
+    async def test_collect_api_failure(self):
+        """测试 API 调用失败时的错误处理"""
+        collector = ApifyCollector(api_token="invalid_token")
+
+        import sys
+        from unittest.mock import MagicMock
+
+        mock_apify_module = MagicMock()
+        mock_apify_module.ApifyClient.return_value.actor.return_value.call.side_effect = Exception("API 错误")
+
+        with (
+            patch.object(collector._cache, "get", return_value=None),
+            patch.dict("sys.modules", {"apify_client": mock_apify_module}),
+        ):
+            result = await collector.collect("com.example.app", store="google")
+
+        assert result["status"] == "error"
+        assert "API 错误" in result["error"]
 
 
 if __name__ == "__main__":
