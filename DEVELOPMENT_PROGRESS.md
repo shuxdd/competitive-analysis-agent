@@ -142,7 +142,7 @@
 - `report/generator.py` - 报告生成器
 - `report/templates.py` - 报告模板管理
 - `report/__init__.py` - 模块导出
-- `tests/test_report.py` - 单元测试 (13个测试用例)
+- `tests/test_report.py` - 单元测试 (12个测试用例)
 - `examples/report_demo.py` - 使用示例
 
 **测试结果**: ✅ 全部通过
@@ -279,14 +279,50 @@
 
 ## 更新日志
 
-### 2026-06-13
-- 新增 Apify 应用商店评论采集器（Google Play + App Store，默认 3 条）
-- 新增 `config/settings.py` 中 `apify_api_token` 配置项
-- searcher 节点集成 Apify 应用商店数据源，支持标签触发
-- analyzer 节点新增用户评价分析（从 raw_data 读取商店评论，含评分统计、情感分类、关键词提取）
-- extractor 节点优化：改为按竞品合并文本后批量 LLM 提取，减少调用次数
-- 新增 Apify 采集器单元测试 12 个（全部 mock，不调用真实 API）
-- CLAUDE.md 补充虚拟环境说明
+### 2026-06-13 (大规模 Review + 修复)
+
+**认证鉴权系统（新增）**
+- 新增 `api/auth.py` JWT 工具模块（PyJWT HS256 + pbkdf2_hmac 密码哈希）
+- 新增 `api/routers/auth.py` 登录/注册接口
+- 所有路由添加 `require_user` / `get_current_user` 依赖，按 `user_id` 数据隔离
+- 前端新增登录/注册页面、AuthContext、路由守卫
+- 新增 `frontend/src/pages/login/`、`frontend/src/pages/register/` 页面
+- 新增 `frontend/src/contexts/AuthContext.tsx` 认证上下文
+
+**移除 quick/deep 分析类型**
+- 删除 `config/prompts.py` 中 `QUICK_REPORT_PROMPT` 和 `DEEP_REPORT_PROMPT`
+- 删除 `report/templates.py` 中 quick/deep 模板，统一为 standard
+- 删除 `report/generator.py` 中 `_prepare_quick_data`、Quick/Deep 分支
+- 删除 `models/analysis.py` 中 `ReportType.QUICK` / `ReportType.DEEP`
+- 简化 `agent/graph.py`：移除条件路由，线性流程（planner→searcher→scraper→extractor→analyzer→reporter→knowledge_store）
+- 前端分析类型选择器同步移除 quick/deep 选项
+
+**竞品自动检测应用商店 ID**
+- `api/routers/competitors.py` 新增 `_auto_detect_store_ids()` 函数
+- 创建/更新竞品时自动通过 iTunes Search API 查找 App Store ID
+- 通过 SerpAPI 搜索 Google Play 包名
+- `CompetitorORM` 新增 `google_play_id` / `app_store_id` 字段
+
+**WebSocket JWT 认证**
+- `api/app.py` WebSocket 端点增加 token 验证（query param `?token=xxx`）
+- 验证 token 有效性 + 任务归属权校验
+- 前端 `[id].tsx` 连接 WS 时从 localStorage 取 token 传入
+
+**知识库清理**
+- `knowledge_base.py` 增强 `delete_competitor()`：同时清理 "competitors" 和 "reviews" 两个集合
+- 竞品删除时自动清理 Chroma 中对应向量
+
+**SerpAPI 未配置处理**
+- `agent/nodes/searcher.py` 增加早期退出：`serpapi_key` 为空时直接返回错误信息
+- `api/routers/analysis.py` 将 graph 错误传播到 `task.error_message`
+- 前端完成状态展示 amber 警告横幅
+
+**知识库写入流程**
+- 新增 `agent/nodes/knowledge_store.py` 节点，分析完成后将结构化数据和用户评价写入 Chroma
+
+**其它修复**
+- `test_api.py` 修复 `test_list_reports_with_data`（user_id 查询）
+- `test_agent.py` 修复 `test_header_generation`（移除 analysis_type 参数）
 
 ### 2026-06-12 (晚上)
 - 完成工具模块（utils/）：日志、日期、JSON、文本、LLM解析、元数据、报告辅助

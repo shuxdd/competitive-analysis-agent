@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     openai_api_base: str = "https://api.xiaomimimo.com/v1"
     default_model: str = "mimo-v2-omni"
 
+    # Embedding配置（默认通义千问 text-embedding-v4）
+    embedding_api_key: str = ""           # 为空则用 openai_api_key
+    embedding_api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    embedding_model: str = "text-embedding-v4"
+    embedding_dimensions: int = 1024       # 向量维度
+
     # 向量数据库配置
     chroma_persist_dir: str = "./data/chroma"
     chroma_collection_name: str = "competitors"

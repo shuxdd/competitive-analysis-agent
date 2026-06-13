@@ -148,9 +148,9 @@ class TestKnowledgeBase:
     def knowledge_base(self, temp_dir):
         """创建知识库实例（使用mock embedding）"""
         with patch('knowledge.knowledge_base.create_embedding_service') as mock_create:
-            # 创建mock embedding服务
+            # 创建mock embedding服务（返回与输入相同数量的向量）
             mock_embedding = Mock()
-            mock_embedding.embed_documents.return_value = [[0.1, 0.2, 0.3]] * 10
+            mock_embedding.embed_documents.side_effect = lambda texts: [[0.1, 0.2, 0.3] for _ in texts]
             mock_embedding.embed_query.return_value = [0.1, 0.2, 0.3]
             mock_create.return_value = mock_embedding
 

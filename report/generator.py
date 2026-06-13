@@ -8,7 +8,6 @@
 import os
 import logging
 from datetime import datetime
-from io import BytesIO
 from typing import Dict, List, Optional, Any
 
 from agent.llm import create_llm
@@ -93,79 +92,6 @@ class ReportGenerator:
         logger.info(f"Markdown报告已导出: {filepath}")
         return filepath
 
-    def export_html(self, report: str, filename: Optional[str] = None) -> str:
-        """
-        导出HTML文件
-
-        Args:
-            report: Markdown格式的报告内容
-            filename: 文件名（不含扩展名）
-
-        Returns:
-            文件路径
-        """
-        if filename is None:
-            filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-        filepath = os.path.join(self.output_dir, f"{filename}.html")
-
-        html_content = self._markdown_to_html(report)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(html_content)
-
-        logger.info(f"HTML报告已导出: {filepath}")
-        return filepath
-
-    def export_pdf(self, report: str, filename: Optional[str] = None) -> str:
-        """
-        导出PDF文件
-
-        Args:
-            report: Markdown格式的报告内容
-            filename: 文件名（不含扩展名）
-
-        Returns:
-            文件路径
-        """
-        if filename is None:
-            filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-        filepath = os.path.join(self.output_dir, f"{filename}.pdf")
-        html_content = self._markdown_to_html(report)
-
-        from xhtml2pdf import pisa
-
-        with open(filepath, "wb") as f:
-            status = pisa.CreatePDF(html_content, dest=f, encoding="utf-8")
-
-        if status.err:
-            raise RuntimeError(f"PDF生成失败: {status.err}")
-
-        logger.info(f"PDF报告已导出: {filepath}")
-        return filepath
-
-    def export_pdf_bytes(self, report: str) -> bytes:
-        """
-        生成PDF字节流（用于API响应）
-
-        Args:
-            report: Markdown格式的报告内容
-
-        Returns:
-            PDF字节内容
-        """
-        html_content = self._markdown_to_html(report)
-        buffer = BytesIO()
-
-        from xhtml2pdf import pisa
-
-        status = pisa.CreatePDF(html_content, dest=buffer, encoding="utf-8")
-        if status.err:
-            raise RuntimeError(f"PDF生成失败: {status.err}")
-
-        return buffer.getvalue()
-
     def _prepare_data(self, analysis_results: Dict, competitors: List[str]) -> str:
         """准备报告数据"""
         data = {
@@ -192,61 +118,3 @@ class ReportGenerator:
             "analysis_summary": analysis_results.get("summary", ""),
         }
         return generate_fallback_report(competitor_name, analysis_data)
-
-    def _markdown_to_html(self, markdown_text: str) -> str:
-        """Markdown转HTML"""
-        try:
-            import markdown
-
-            html_body = markdown.markdown(
-                markdown_text,
-                extensions=["tables", "fenced_code", "codehilite"],
-            )
-        except ImportError:
-            # 降级：简单的换行处理
-            html_body = markdown_text.replace("\n", "<br>")
-
-        return f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>竞品分析报告</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-            color: #333;
-        }}
-        h1, h2, h3 {{ color: #2c3e50; }}
-        table {{
-            border-collapse: collapse;
-            width: 100%;
-            margin: 1em 0;
-        }}
-        th, td {{
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            text-align: left;
-        }}
-        th {{ background-color: #f5f5f5; }}
-        blockquote {{
-            border-left: 4px solid #3498db;
-            margin: 1em 0;
-            padding: 0.5em 1em;
-            background-color: #f9f9f9;
-        }}
-        code {{
-            background-color: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-        }}
-    </style>
-</head>
-<body>
-{html_body}
-</body>
-</html>"""

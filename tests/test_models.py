@@ -123,9 +123,7 @@ class TestAnalysisModels:
 
     def test_report_type_enum(self):
         """测试报告类型枚举"""
-        assert ReportType.QUICK == "quick"
         assert ReportType.STANDARD == "standard"
-        assert ReportType.DEEP == "deep"
 
     def test_analysis_dimension_enum(self):
         """测试分析维度枚举"""

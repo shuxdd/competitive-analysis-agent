@@ -14,18 +14,17 @@ class TestGenerateReportHeader:
         result = generate_report_header(
             title="测试报告",
             competitors=["竞品A", "竞品B"],
-            report_type="quick"
+            report_type="standard"
         )
         assert "测试报告" in result
         assert "竞品A" in result
         assert "竞品B" in result
-        assert "快速" in result
+        assert "标准" in result
 
     def test_report_types(self):
-        """测试所有报告类型"""
-        for rtype, cn_name in [("quick", "快速"), ("standard", "标准"), ("deep", "深度")]:
-            result = generate_report_header("标题", ["A"], rtype)
-            assert cn_name in result
+        """测试报告头部"""
+        result = generate_report_header("标题", ["A"], "standard")
+        assert "标准" in result
 
 
 class TestPrepareAnalysisData:

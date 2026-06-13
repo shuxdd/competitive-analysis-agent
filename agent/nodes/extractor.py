@@ -40,19 +40,38 @@ async def extract_info(state: AgentState) -> dict:
         # 按竞品分组收集所有爬取文本
         comp_pages: Dict[str, List[Dict]] = defaultdict(list)
         for entry in raw_data:
-            if entry.get("source") != "web_scrape":
-                continue
-            text = entry.get("text", "")
-            if not text or len(text) < 50:
-                continue
-            comp_pages[entry["competitor"]].append({
-                "url": entry.get("url", ""),
-                "title": entry.get("title", ""),
-                "text": text,
-            })
+            if entry.get("source") == "web_scrape":
+                text = entry.get("text", "")
+                if not text or len(text) < 50:
+                    continue
+                comp_pages[entry["competitor"]].append({
+                    "url": entry.get("url", ""),
+                    "title": entry.get("title", ""),
+                    "text": text,
+                })
+
+        # 无爬取数据时，降级使用搜索摘要
+        if not comp_pages:
+            logger.info("  无爬取数据，降级使用搜索摘要")
+            for entry in raw_data:
+                if entry.get("source") != "web_search":
+                    continue
+                data = entry.get("data", {})
+                results = data.get("results", [])
+                snippets = []
+                for r in results:
+                    snippet = r.get("snippet", "")
+                    if snippet and len(snippet) > 20:
+                        snippets.append(snippet)
+                if snippets:
+                    comp_pages[entry["competitor"]].append({
+                        "url": "",
+                        "title": f"搜索摘要 ({len(snippets)} 条)",
+                        "text": "\n".join(snippets),
+                    })
 
         if not comp_pages:
-            logger.info("  无可用爬取数据")
+            logger.info("  无可用搜索摘要或爬取数据")
             report_progress(state.get("progress_callback"), "extractor")
             return {
                 "extracted_info": extracted,

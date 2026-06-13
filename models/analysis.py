@@ -14,9 +14,7 @@ import uuid
 
 class ReportType(str, Enum):
     """报告类型"""
-    QUICK = "quick"      # 快速概览
     STANDARD = "standard"  # 标准分析
-    DEEP = "deep"        # 深度研究
 
 
 class AnalysisDimension(str, Enum):

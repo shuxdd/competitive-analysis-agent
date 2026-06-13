@@ -75,7 +75,8 @@ export default function AnalysisDetail() {
     if (!id || !task) return
     if (task.status !== 'running' && task.status !== 'pending' && task.status !== 'collecting' && task.status !== 'planning') return
 
-    const wsUrl = `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace('http', 'ws')}/ws/analysis/${id}`
+    const token = localStorage.getItem('auth_token')
+    const wsUrl = `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace('http', 'ws')}/ws/analysis/${id}?token=${token}`
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
@@ -373,6 +374,11 @@ export default function AnalysisDetail() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CheckCircle2 className="h-8 w-8 text-green-500 mb-4" />
             <p className="text-green-500 font-medium mb-2">分析完成</p>
+            {task.error_message && (
+              <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded px-4 py-2 mb-4 max-w-md text-center">
+                {task.error_message}
+              </p>
+            )}
             <Button onClick={() => reportId && navigate(`/reports/${reportId}`)}>
               <FileText className="mr-2 h-4 w-4" />
               查看报告

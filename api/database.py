@@ -35,16 +35,31 @@ def generate_uuid() -> str:
     return str(uuid.uuid4())
 
 
+class UserORM(Base):
+    """用户 ORM 模型"""
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    display_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class CompetitorORM(Base):
     """竞品 ORM 模型"""
     __tablename__ = "competitors"
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False)
     website = Column(String, nullable=True)
     industry = Column(String, nullable=True)
     tags = Column(JSON, default=list)
     notes = Column(Text, nullable=True)
+    google_play_id = Column(String, nullable=True)
+    app_store_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -54,6 +69,7 @@ class AnalysisTaskORM(Base):
     __tablename__ = "analysis_tasks"
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, nullable=False, index=True)
     competitors = Column(JSON, nullable=False)
     analysis_type = Column(String, default="standard")
     dimensions = Column(JSON, default=list)
@@ -70,6 +86,7 @@ class ReportORM(Base):
     __tablename__ = "reports"
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, nullable=False, index=True)
     analysis_id = Column(String, nullable=False)
     title = Column(String, nullable=False)
     report_type = Column(String, default="standard")

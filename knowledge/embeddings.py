@@ -5,8 +5,7 @@ Embedding服务
 提供文本向量化功能，支持多种Embedding模型。
 """
 
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.embeddings import Embeddings
+from openai import OpenAI
 from typing import List, Optional, Dict, Any
 import logging
 
@@ -14,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
-    """Embedding服务"""
+    """Embedding服务（基于 OpenAI SDK，兼容 DashScope 等兼容接口）"""
 
     def __init__(
         self,
-        model: str = "text-embedding-3-small",
+        model: Optional[str] = None,
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         dimensions: Optional[int] = None
@@ -27,24 +26,33 @@ class EmbeddingService:
         初始化Embedding服务
 
         Args:
-            model: Embedding模型名称
-            api_key: API密钥
-            api_base: API基础URL
+            model: Embedding模型名称（默认从 settings.embedding_model 读取）
+            api_key: API密钥（默认从 settings.embedding_api_key 读取，再回退到 openai_api_key）
+            api_base: API基础URL（默认从 settings.embedding_api_base 读取）
             dimensions: 向量维度
         """
-        self.model = model
+        from config.settings import settings
 
-        # 构建初始化参数
-        init_params = {"model": model}
-        if api_key:
-            init_params["openai_api_key"] = api_key
-        if api_base:
-            init_params["openai_api_base"] = api_base
-        if dimensions:
-            init_params["dimensions"] = dimensions
+        self.model = model or settings.embedding_model
 
-        self.embeddings = OpenAIEmbeddings(**init_params)
-        logger.info(f"Embedding服务初始化完成，模型: {model}")
+        if api_key is None:
+            api_key = settings.embedding_api_key or settings.openai_api_key
+        if api_base is None:
+            api_base = settings.embedding_api_base or settings.openai_api_base
+        if dimensions is None:
+            dimensions = settings.embedding_dimensions
+
+        self._client = OpenAI(api_key=api_key, base_url=api_base)
+        self._dimensions = dimensions
+        logger.info(f"Embedding服务初始化完成，模型: {self.model}, api_base: {api_base}")
+
+    def _call(self, input_text: str) -> List[float]:
+        """底层 SDK 调用，提取为公共方法"""
+        kwargs = {"model": self.model, "input": input_text}
+        if self._dimensions:
+            kwargs["dimensions"] = self._dimensions
+        resp = self._client.embeddings.create(**kwargs)
+        return resp.data[0].embedding
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """
@@ -60,7 +68,14 @@ class EmbeddingService:
             return []
 
         try:
-            vectors = self.embeddings.embed_documents(texts)
+            # OpenAI SDK 支持批量 input
+            kwargs = {"model": self.model, "input": texts}
+            if self._dimensions:
+                kwargs["dimensions"] = self._dimensions
+            resp = self._client.embeddings.create(**kwargs)
+            # 按传入顺序排序
+            sorted_data = sorted(resp.data, key=lambda x: x.index)
+            vectors = [d.embedding for d in sorted_data]
             logger.info(f"成功嵌入 {len(texts)} 个文档")
             return vectors
         except Exception as e:
@@ -78,7 +93,7 @@ class EmbeddingService:
             向量
         """
         try:
-            vector = self.embeddings.embed_query(text)
+            vector = self._call(text)
             logger.debug(f"成功嵌入查询: {text[:50]}...")
             return vector
         except Exception as e:
@@ -191,6 +206,24 @@ class LocalEmbeddingService:
             向量维度
         """
         return self.model.get_sentence_embedding_dimension()
+
+
+def create_chroma_embedding_function(embedding_service: EmbeddingService):
+    """
+    将 EmbeddingService 包装为 Chroma 可接受的 embedding_function
+
+    Chroma 要求: fn(inputs: List[str]) -> List[List[float]]
+    """
+    from chromadb import Documents, EmbeddingFunction as ChromaEmbeddingFunction
+
+    class ServiceAdapter(ChromaEmbeddingFunction):
+        def __init__(self, svc):
+            self._svc = svc
+
+        def __call__(self, inputs: Documents) -> List[List[float]]:
+            return self._svc.embed_documents(inputs)
+
+    return ServiceAdapter(embedding_service)
 
 
 def create_embedding_service(

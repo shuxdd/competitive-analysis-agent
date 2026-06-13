@@ -38,6 +38,18 @@ async def analyze_competitors(state: AgentState) -> dict:
         # 按竞品分组
         grouped = _group_by_competitor(extracted_info)
 
+        if not grouped:
+            logger.warning("!!! 无提取数据可分析，请检查上游 extractor 节点是否有报错")
+            # 仍然返回空结果，但附带提示
+            analysis_results["competitors_data"] = {}
+            analysis_results["summary"] = "分析跳过：无可用提取数据。请检查数据采集和提取步骤。"
+            report_progress(state.get("progress_callback"), "analyzer")
+            return {
+                "analysis_results": analysis_results,
+                "status": "analyzing",
+                "errors": state.get("errors", []) + ["分析跳过: extracted_info 为空"]
+            }
+
         # 合并每个竞品的数据
         merged_data = {}
         for competitor, entries in grouped.items():

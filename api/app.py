@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.database import init_db
 from api.routers import register_routers
+from api.auth import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +88,37 @@ def create_app() -> FastAPI:
     # 注册路由
     register_routers(app)
 
-    # WebSocket 进度推送
+    # WebSocket 进度推送（需 token 认证）
     @app.websocket("/ws/analysis/{task_id}")
     async def ws_analysis_progress(websocket: WebSocket, task_id: str):
+        token = websocket.query_params.get("token", "")
+        if not token:
+            await websocket.close(code=4001, reason="缺少 token")
+            return
+
+        user_id = verify_token(token)
+        if user_id is None:
+            await websocket.close(code=4001, reason="无效或过期 token")
+            return
+
+        # 验证 task 属于该用户
+        from api.database import AnalysisTaskORM, async_session
+        from sqlalchemy import select
+        async with async_session() as session:
+            result = await session.execute(
+                select(AnalysisTaskORM).where(
+                    AnalysisTaskORM.id == task_id,
+                    AnalysisTaskORM.user_id == user_id,
+                )
+            )
+            task = result.scalar_one_or_none()
+            if not task:
+                await websocket.close(code=4003, reason="任务不存在或无权限")
+                return
+
         await progress_manager.connect(task_id, websocket)
         try:
             while True:
-                # 保持连接，等待客户端消息或断开
                 await websocket.receive_text()
         except WebSocketDisconnect:
             progress_manager.disconnect(task_id, websocket)
@@ -112,9 +137,15 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.error(f"未处理的异常: {exc}", exc_info=True)
+        error_msg = str(exc)
+        # 确保错误消息不含非 latin-1 字符，避免 ASGI 编码错误
+        try:
+            error_msg.encode('latin-1')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            error_msg = error_msg.encode('utf-8', errors='replace').decode('latin-1', errors='replace')
         return JSONResponse(
             status_code=500,
-            content={"code": 500, "data": None, "message": f"服务器内部错误: {str(exc)}"},
+            content={"code": 500, "data": None, "message": f"服务器内部错误: {error_msg}"},
         )
 
     return app

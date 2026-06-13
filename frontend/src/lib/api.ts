@@ -20,7 +20,16 @@ const api = axios.create({
   },
 })
 
-// 响应拦截器 - 解包 data 字段
+// 请求拦截器 - 自动带 token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器 - 解包 data 字段 + 401 跳转登录
 api.interceptors.response.use(
   (response) => {
     const data = response.data as ApiResponse | PaginatedResponse
@@ -30,6 +39,11 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
+      window.location.href = '/login'
+    }
     const message = error.response?.data?.message || error.message || '网络错误'
     return Promise.reject(new Error(message))
   }
@@ -65,17 +79,22 @@ export const analysisApi = {
 
   listTasks: (params?: { page?: number; page_size?: number }) =>
     api.get<PaginatedResponse<AnalysisTask>>('/api/analysis', { params }),
+
+  deleteTask: (taskId: string) =>
+    api.delete<ApiResponse>(`/api/analysis/${taskId}`),
 }
 
 // 报告 API
 export const reportApi = {
-  list: (params?: { page?: number; page_size?: number }) =>
+  list: (params?: { page?: number; page_size?: number; analysis_id?: string }) =>
     api.get<PaginatedResponse<Report>>('/api/reports', { params }),
 
   get: (id: string) => api.get<ApiResponse<Report>>(`/api/reports/${id}`),
 
   getChartData: (id: string) =>
     api.get<ApiResponse<ChartDataResponse>>(`/api/reports/${id}/chart-data`),
+
+  delete: (id: string) => api.delete<ApiResponse>(`/api/reports/${id}`),
 }
 
 // 图表数据类型

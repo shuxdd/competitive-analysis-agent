@@ -8,9 +8,11 @@
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from api.schemas import QARequest
+from api.auth import require_user
+from api.database import UserORM
 from agent.llm import create_llm
 from knowledge.knowledge_base import KnowledgeBase
 
@@ -18,20 +20,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_knowledge_context(question: str, competitors: Optional[List[str]] = None) -> str:
-    """从知识库获取上下文"""
+def _get_knowledge_context(
+    question: str,
+    user_id: str,
+    competitors: Optional[List[str]] = None,
+) -> str:
+    """从知识库获取上下文（按 user_id 隔离）"""
     try:
         kb = KnowledgeBase()
 
         if competitors:
             all_context = []
             for name in competitors:
-                results = kb.search_competitors(query=question, top_k=3)
+                results = kb.search_competitors(
+                    query=question, top_k=3, user_id=user_id,
+                )
                 for r in results:
                     all_context.append(r.get("document", ""))
             return "\n\n".join(all_context[:5])
         else:
-            results = kb.search_competitors(query=question, top_k=5)
+            results = kb.search_competitors(
+                query=question, top_k=5, user_id=user_id,
+            )
             return "\n\n".join(r.get("document", "") for r in results)
     except Exception as e:
         logger.warning(f"知识库查询失败: {e}")
@@ -55,9 +65,9 @@ async def _ask_llm(question: str, context: str) -> str:
 
 
 @router.post("")
-async def ask_question(req: QARequest):
+async def ask_question(req: QARequest, user: UserORM = Depends(require_user)):
     """提交智能问答"""
-    context = _get_knowledge_context(req.question, req.competitors)
+    context = _get_knowledge_context(req.question, user.id, req.competitors)
     answer = await _ask_llm(req.question, context)
 
     sources = []

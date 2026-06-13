@@ -6,9 +6,7 @@ from utils.json_utils import json_serialize
 
 # 报告类型中文映射
 REPORT_TYPE_NAMES = {
-    "quick": "快速",
     "standard": "标准",
-    "deep": "深度",
 }
 
 

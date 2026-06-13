@@ -6,7 +6,7 @@
 """
 
 from typing import Dict, List
-from config.prompts import REPORT_PROMPT, QUICK_REPORT_PROMPT, DEEP_REPORT_PROMPT
+from config.prompts import REPORT_PROMPT
 
 
 class ReportTemplates:
@@ -14,12 +14,6 @@ class ReportTemplates:
 
     # 模板定义
     TEMPLATES = {
-        "quick": {
-            "name": "快速报告",
-            "description": "简洁的竞品概览，适合快速了解",
-            "sections": ["公司概览", "关键产品", "主要差异化", "定价摘要"],
-            "prompt": QUICK_REPORT_PROMPT,
-        },
         "standard": {
             "name": "标准报告",
             "description": "全面的竞品分析，适合日常决策",
@@ -33,21 +27,6 @@ class ReportTemplates:
                 "建议",
             ],
             "prompt": REPORT_PROMPT,
-        },
-        "deep": {
-            "name": "深度报告",
-            "description": "深入的竞品研究，适合战略规划",
-            "sections": [
-                "执行摘要",
-                "市场分析",
-                "竞品详细对比",
-                "SWOT分析",
-                "趋势分析",
-                "竞争格局",
-                "战略建议",
-                "风险评估",
-            ],
-            "prompt": DEEP_REPORT_PROMPT,
         },
     }
 

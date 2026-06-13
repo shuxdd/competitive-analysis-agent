@@ -178,7 +178,7 @@ class TestReporterNode:
         """测试报告头部生成"""
         from agent.nodes.reporter import _generate_header
 
-        header = _generate_header(["Notion", "Obsidian"], "standard")
+        header = _generate_header(["Notion", "Obsidian"])
 
         assert "竞品分析报告" in header
         assert "Notion" in header

@@ -11,6 +11,7 @@ import asyncio
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import Mock, AsyncMock, patch
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -53,6 +54,20 @@ async def client(test_app):
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client):
+    """注册测试用户并设置全局认证头"""
+    resp = await client.post("/api/auth/register", json={
+        "username": "testuser",
+        "password": "testpass123",
+    })
+    data = resp.json()
+    token = data["data"]["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    client.headers.update(headers)
+    return headers
 
 
 # ==================== 数据库层测试 ====================
@@ -161,64 +176,64 @@ class TestCompetitorRoutes:
     """竞品路由测试"""
 
     @pytest.mark.asyncio
-    async def test_create_competitor(self, client):
+    async def test_create_competitor(self, client, auth_headers):
         """测试创建竞品"""
         resp = await client.post("/api/competitors", json={
             "name": "Notion",
             "website": "https://notion.so",
             "industry": "SaaS",
             "tags": ["笔记", "协作"],
-        })
+        }, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["code"] == 200
         assert data["data"]["name"] == "Notion"
 
     @pytest.mark.asyncio
-    async def test_list_competitors(self, client):
+    async def test_list_competitors(self, client, auth_headers):
         """测试获取竞品列表"""
-        await client.post("/api/competitors", json={"name": "TestComp"})
-        resp = await client.get("/api/competitors")
+        await client.post("/api/competitors", json={"name": "TestComp"}, headers=auth_headers)
+        resp = await client.get("/api/competitors", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] >= 1
 
     @pytest.mark.asyncio
-    async def test_get_competitor(self, client):
+    async def test_get_competitor(self, client, auth_headers):
         """测试获取竞品详情"""
-        create_resp = await client.post("/api/competitors", json={"name": "DetailComp"})
+        create_resp = await client.post("/api/competitors", json={"name": "DetailComp"}, headers=auth_headers)
         comp_id = create_resp.json()["data"]["id"]
 
-        resp = await client.get(f"/api/competitors/{comp_id}")
+        resp = await client.get(f"/api/competitors/{comp_id}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["data"]["name"] == "DetailComp"
 
     @pytest.mark.asyncio
-    async def test_get_competitor_not_found(self, client):
+    async def test_get_competitor_not_found(self, client, auth_headers):
         """测试获取不存在的竞品"""
-        resp = await client.get("/api/competitors/nonexistent")
+        resp = await client.get("/api/competitors/nonexistent", headers=auth_headers)
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_competitor(self, client):
+    async def test_update_competitor(self, client, auth_headers):
         """测试更新竞品"""
-        create_resp = await client.post("/api/competitors", json={"name": "OldName"})
+        create_resp = await client.post("/api/competitors", json={"name": "OldName"}, headers=auth_headers)
         comp_id = create_resp.json()["data"]["id"]
 
-        resp = await client.put(f"/api/competitors/{comp_id}", json={"name": "NewName"})
+        resp = await client.put(f"/api/competitors/{comp_id}", json={"name": "NewName"}, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["data"]["name"] == "NewName"
 
     @pytest.mark.asyncio
-    async def test_delete_competitor(self, client):
+    async def test_delete_competitor(self, client, auth_headers):
         """测试删除竞品"""
-        create_resp = await client.post("/api/competitors", json={"name": "ToDelete"})
+        create_resp = await client.post("/api/competitors", json={"name": "ToDelete"}, headers=auth_headers)
         comp_id = create_resp.json()["data"]["id"]
 
-        resp = await client.delete(f"/api/competitors/{comp_id}")
+        resp = await client.delete(f"/api/competitors/{comp_id}", headers=auth_headers)
         assert resp.status_code == 200
 
-        resp = await client.get(f"/api/competitors/{comp_id}")
+        resp = await client.get(f"/api/competitors/{comp_id}", headers=auth_headers)
         assert resp.status_code == 404
 
 
@@ -226,7 +241,7 @@ class TestAnalysisRoutes:
     """分析任务路由测试"""
 
     @pytest.mark.asyncio
-    async def test_submit_analysis(self, client):
+    async def test_submit_analysis(self, client, auth_headers):
         """测试提交分析任务"""
         resp = await client.post("/api/analysis", json={
             "competitors": ["Notion", "Obsidian"],
@@ -240,7 +255,7 @@ class TestAnalysisRoutes:
         assert data["data"]["status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_list_tasks(self, client):
+    async def test_list_tasks(self, client, auth_headers):
         """测试获取任务列表"""
         await client.post("/api/analysis", json={"competitors": ["Test"]})
         resp = await client.get("/api/analysis")
@@ -248,7 +263,7 @@ class TestAnalysisRoutes:
         assert resp.json()["total"] >= 1
 
     @pytest.mark.asyncio
-    async def test_get_task(self, client):
+    async def test_get_task(self, client, auth_headers):
         """测试获取任务详情"""
         submit_resp = await client.post("/api/analysis", json={"competitors": ["Notion"]})
         task_id = submit_resp.json()["data"]["task_id"]
@@ -258,13 +273,13 @@ class TestAnalysisRoutes:
         assert resp.json()["data"]["id"] == task_id
 
     @pytest.mark.asyncio
-    async def test_get_task_not_found(self, client):
+    async def test_get_task_not_found(self, client, auth_headers):
         """测试获取不存在的任务"""
         resp = await client.get("/api/analysis/nonexistent")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_task(self, client):
+    async def test_delete_task(self, client, auth_headers):
         """测试删除任务"""
         submit_resp = await client.post("/api/analysis", json={"competitors": ["Notion"]})
         task_id = submit_resp.json()["data"]["task_id"]
@@ -277,35 +292,38 @@ class TestReportRoutes:
     """报告路由测试"""
 
     @pytest.mark.asyncio
-    async def test_list_reports_empty(self, client):
+    async def test_list_reports_empty(self, client, auth_headers):
         """测试获取空报告列表"""
         resp = await client.get("/api/reports")
         assert resp.status_code == 200
         assert resp.json()["total"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_report_not_found(self, client):
+    async def test_get_report_not_found(self, client, auth_headers):
         """测试获取不存在的报告"""
         resp = await client.get("/api/reports/nonexistent")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_report_not_found(self, client):
+    async def test_delete_report_not_found(self, client, auth_headers):
         """测试删除不存在的报告"""
         resp = await client.delete("/api/reports/nonexistent")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_list_reports_with_data(self, client):
+    async def test_list_reports_with_data(self, client, auth_headers):
         """测试获取报告列表（有数据）"""
-        from api.database import ReportORM
+        from api.database import ReportORM, UserORM
         async with test_async_session() as session:
+            result = await session.execute(select(UserORM).where(UserORM.username == "testuser"))
+            user = result.scalar_one()
             report = ReportORM(
                 analysis_id="test-analysis",
                 title="测试报告",
                 report_type="standard",
                 format="markdown",
                 content="# 测试报告内容",
+                user_id=user.id,
             )
             session.add(report)
             await session.commit()
@@ -315,7 +333,7 @@ class TestReportRoutes:
         assert resp.json()["total"] >= 1
 
     @pytest.mark.asyncio
-    async def test_export_report_not_found(self, client):
+    async def test_export_report_not_found(self, client, auth_headers):
         """测试导出不存在的报告"""
         resp = await client.get("/api/reports/nonexistent/export")
         assert resp.status_code == 404
@@ -325,7 +343,7 @@ class TestQARoutes:
     """智能问答路由测试"""
 
     @pytest.mark.asyncio
-    async def test_qa_submit(self, client):
+    async def test_qa_submit(self, client, auth_headers):
         """测试提交问答"""
         with patch("api.routers.qa._get_knowledge_context") as mock_ctx, \
              patch("api.routers.qa._ask_llm") as mock_llm:
@@ -339,7 +357,7 @@ class TestQARoutes:
             assert len(data["data"]["answer"]) > 0
 
     @pytest.mark.asyncio
-    async def test_qa_with_competitors(self, client):
+    async def test_qa_with_competitors(self, client, auth_headers):
         """测试指定竞品的问答"""
         with patch("api.routers.qa._get_knowledge_context") as mock_ctx, \
              patch("api.routers.qa._ask_llm") as mock_llm:
@@ -354,7 +372,7 @@ class TestQARoutes:
             assert "Notion" in resp.json()["data"]["answer"]
 
     @pytest.mark.asyncio
-    async def test_qa_empty_question(self, client):
+    async def test_qa_empty_question(self, client, auth_headers):
         """测试空问题"""
         resp = await client.post("/api/qa", json={"question": ""})
         assert resp.status_code == 422

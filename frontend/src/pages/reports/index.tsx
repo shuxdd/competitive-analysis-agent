@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   FileText,
   Calendar,
   Eye,
   Search,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,14 +14,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Pagination } from '@/components/ui/pagination'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { reportApi } from '@/lib/api'
 import { formatDate, truncateText } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { Report } from '@/types'
 
 export default function ReportList() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [keyword, setKeyword] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Report | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['reports', page],
@@ -30,6 +42,18 @@ export default function ReportList() {
   const reports = data?.data?.data || []
   const total = data?.data?.total || 0
   const totalPages = Math.ceil(total / 12)
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => reportApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
+      toast.success('报告已删除')
+      setDeleteTarget(null)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
 
   const filteredReports = keyword
     ? reports.filter(
@@ -119,18 +143,31 @@ export default function ReportList() {
                     <Calendar className="h-3 w-3" />
                     {report.created_at ? formatDate(report.created_at) : '-'}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/reports/${report.id}`)
-                    }}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    查看
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/reports/${report.id}`)
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      查看
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteTarget(report)
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -146,6 +183,30 @@ export default function ReportList() {
           onPageChange={setPage}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              确定要删除报告「{deleteTarget?.title}」吗？此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? '删除中...' : '确认删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -14,15 +14,17 @@
 - **爬虫**: Selenium + BeautifulSoup
 - **数据验证**: Pydantic V2
 - **LLM**: MIMO (OpenAI兼容格式)
+- **认证**: JWT (PyJWT) + pbkdf2_hmac 密码哈希
+- **商店数据**: Apify (Google Play / App Store) + iTunes Search API
 
 ## 目录结构
 
 ```
 agent/          - Agent核心（LangGraph状态图、节点、工具）
-api/            - FastAPI接口层
-collector/      - 数据采集（搜索、爬取、清洗）
+api/            - FastAPI接口层（含 auth/ 认证模块）
+collector/      - 数据采集（搜索、爬取、清洗、Apify应用商店）
 config/         - 配置管理（设置、Prompt模板）
-frontend/       - React前端界面
+frontend/       - React前端界面（含登录/注册页）
 examples/       - 使用示例
 knowledge/      - 知识库（向量存储、Embedding、RAG）
 models/         - 数据模型（Pydantic）
@@ -43,6 +45,14 @@ utils/          - 工具类
   - `test`: 测试相关
   - `refactor`: 重构
 - 示例：`feat: 添加用户评价采集功能`、`fix: 修复价格提取正则表达式`
+
+### 问题记录
+
+每次解决问题时，必须在 **PROBLEM_LOG.md** 中记录：
+- 什么问题（现象 + 影响）
+- 根因是什么
+- 怎么解决的
+- 时间
 
 ### 文档同步更新
 
@@ -147,20 +157,21 @@ GITHUB_TOKEN=your-github-token（可选，无限流限制）
 | knowledge/ | ✅ 完成 | 知识库（向量存储、RAG） |
 | collector/ | ✅ 完成 | 数据采集（搜索、爬取、清洗、GitHub、Apify应用商店） |
 | config/ | ✅ 完成 | 配置管理 |
-| agent/ | ✅ 完成 | Agent核心（LangGraph状态图） |
-| report/ | ✅ 完成 | 报告生成（模板管理、Markdown/HTML导出） |
-| api/ | ✅ 完成 | FastAPI接口（竞品CRUD、分析任务、报告管理、智能问答） |
-| frontend/ | ✅ 完成 | React前端（TypeScript + Tailwind + shadcn/ui） |
+| agent/ | ✅ 完成 | LangGraph状态图（线性流程 + knowledge_store 节点） |
+| report/ | ✅ 完成 | 报告生成（模板管理、Markdown导出） |
+| api/ | ✅ 完成 | FastAPI接口（JWT认证、竞品CRUD、分析任务、报告管理、智能问答） |
+| frontend/ | ✅ 完成 | React前端（TypeScript + Tailwind + shadcn/ui + 登录/注册/路由守卫） |
 | utils/ | ✅ 完成 | 工具类（日志、JSON、日期、文本、元数据、LLM解析、报告辅助） |
 
 ## 测试统计
 
 - 测试文件：8个（含 utils/tests/）
-- 测试用例：153个（含 Apify 采集器 12 个、收集器原有 16 个、模型 15 个、知识库 8 个、Agent 11 个、报告 13 个、API 28 个、utils 48 个）
-- 状态：全部通过（1个预知失败：ReportGenerator.export_html 方法已移除）
+- 测试用例：148个（收集器 16 个、Apify 采集器 12 个、模型 15 个、知识库 8 个、Agent 11 个、报告 10 个、API 28 个、utils 48 个）
+- 状态：全部通过
 
 ## 相关文档
 
+- [PROBLEM_LOG.md](PROBLEM_LOG.md) - 问题记录（现象、根因、解决方案）
 - [OPTIMIZATION_ROADMAP.md](OPTIMIZATION_ROADMAP.md) - 优化路线图
 - [DEVELOPMENT_PROGRESS.md](DEVELOPMENT_PROGRESS.md) - 开发进度
 - [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) - 技术架构

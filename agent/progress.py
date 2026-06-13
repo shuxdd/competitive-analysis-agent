@@ -18,6 +18,7 @@ NODE_PROGRESS = {
     "extractor": (65, "信息提取完成"),
     "analyzer": (85, "分析完成"),
     "reporter": (100, "报告生成完成"),
+    "knowledge_store": (100, "知识库存储完成"),
 }
 
 

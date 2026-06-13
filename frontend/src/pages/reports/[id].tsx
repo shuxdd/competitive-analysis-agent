@@ -33,9 +33,9 @@ export default function ReportDetail() {
   const report = reportData?.data?.data
   const charts = chartData?.data?.data
 
-  const handleExport = (format: string) => {
+  const handleExport = () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    window.open(`${baseUrl}/api/reports/${id}/export?format=${format}`, '_blank')
+    window.open(`${baseUrl}/api/reports/${id}/export`, '_blank')
   }
 
   if (isLoading) {
@@ -84,17 +84,9 @@ export default function ReportDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleExport('markdown')}>
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-1" />
-            MD
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('html')}>
-            <Download className="h-4 w-4 mr-1" />
-            HTML
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>
-            <Download className="h-4 w-4 mr-1" />
-            PDF
+            下载报告
           </Button>
         </div>
       </div>

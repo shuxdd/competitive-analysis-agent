@@ -15,9 +15,10 @@ class AgentState(TypedDict):
 
     # 输入
     competitors: List[str]
-    analysis_type: str              # "quick" / "standard" / "deep"
+    analysis_type: str              # "standard"
     dimensions: List[str]           # ["features", "pricing", "swot", ...]
     my_product: Optional[str]
+    user_id: Optional[str]          # 用户ID（数据隔离）
 
     # 中间数据
     collection_plan: dict           # planner输出的采集计划

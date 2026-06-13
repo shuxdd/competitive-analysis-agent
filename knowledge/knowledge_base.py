@@ -10,7 +10,7 @@ import logging
 import json
 
 from .vector_store import VectorStore
-from .embeddings import EmbeddingService, create_embedding_service
+from .embeddings import EmbeddingService, create_embedding_service, create_chroma_embedding_function
 from utils.text_utils import split_text as utils_split_text
 
 logger = logging.getLogger(__name__)
@@ -35,22 +35,38 @@ class KnowledgeBase:
             embedding_type: Embedding服务类型
             **embedding_kwargs: Embedding服务参数
         """
-        self.vector_store = VectorStore(persist_dir=persist_dir)
+        # 创建 embedding 服务（带可用性探测）
+        self.embedding_service = embedding_service
+        chroma_ef = None
 
-        if embedding_service:
-            self.embedding_service = embedding_service
-        else:
-            self.embedding_service = create_embedding_service(
-                service_type=embedding_type,
-                **embedding_kwargs
-            )
+        if self.embedding_service is None:
+            try:
+                candidate = create_embedding_service(
+                    service_type=embedding_type,
+                    **embedding_kwargs
+                )
+                # 探测式调用，验证 embedding API 是否可用
+                candidate.embed_query("probe")
+                self.embedding_service = candidate
+                logger.info(f"Embedding API 可用: {embedding_type}")
+            except Exception as e:
+                logger.warning(f"Embedding 服务不可用 ({type(e).__name__}: {e})，"
+                               f"回退到 Chroma 内置模型 (all-MiniLM-L6-v2)")
 
-        logger.info("知识库初始化完成")
+        if self.embedding_service is not None:
+            chroma_ef = create_chroma_embedding_function(self.embedding_service)
+
+        self.vector_store = VectorStore(persist_dir=persist_dir, embedding_function=chroma_ef)
+
+        model_label = (getattr(self.embedding_service, 'model', embedding_type)
+                       if self.embedding_service else 'Chroma 内置 (all-MiniLM-L6-v2)')
+        logger.info(f"知识库初始化完成，embedding 模型: {model_label}")
 
     def add_competitor(
         self,
         competitor_id: str,
-        competitor_data: Dict[str, Any]
+        competitor_data: Dict[str, Any],
+        user_id: Optional[str] = None,
     ):
         """
         添加竞品信息到知识库
@@ -79,7 +95,8 @@ class KnowledgeBase:
         metadatas.append({
             "competitor_id": competitor_id,
             "type": "company_info",
-            "source": "manual"
+            "source": "manual",
+            "user_id": user_id or "",
         })
 
         # 产品信息
@@ -103,7 +120,8 @@ class KnowledgeBase:
                 "competitor_id": competitor_id,
                 "type": "product",
                 "product_name": product.get("name", ""),
-                "source": "manual"
+                "source": "manual",
+                "user_id": user_id or "",
             })
 
         # 添加到向量数据库
@@ -161,7 +179,8 @@ class KnowledgeBase:
         review_content: str,
         rating: float,
         source: str,
-        review_id: Optional[str] = None
+        review_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ):
         """
         添加用户评价到知识库
@@ -172,12 +191,14 @@ class KnowledgeBase:
             rating: 评分
             source: 评价来源
             review_id: 评价ID
+            user_id: 用户ID（用于数据隔离）
         """
         metadata = {
             "competitor_id": competitor_id,
             "type": "user_review",
             "rating": rating,
-            "source": source
+            "source": source,
+            "user_id": user_id or "",
         }
 
         if review_id:
@@ -195,7 +216,8 @@ class KnowledgeBase:
         query: str,
         competitor_id: Optional[str] = None,
         content_type: Optional[str] = None,
-        top_k: int = 5
+        top_k: int = 5,
+        user_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         搜索竞品信息
@@ -205,6 +227,7 @@ class KnowledgeBase:
             competitor_id: 竞品ID过滤
             content_type: 内容类型过滤
             top_k: 返回结果数量
+            user_id: 用户ID过滤（数据隔离）
 
         Returns:
             搜索结果列表
@@ -214,6 +237,8 @@ class KnowledgeBase:
             where["competitor_id"] = competitor_id
         if content_type:
             where["type"] = content_type
+        if user_id:
+            where["user_id"] = user_id
 
         return self.vector_store.search(
             query=query,
@@ -227,7 +252,8 @@ class KnowledgeBase:
         query: str,
         competitor_id: Optional[str] = None,
         min_rating: Optional[float] = None,
-        top_k: int = 10
+        top_k: int = 10,
+        user_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         搜索用户评价
@@ -237,6 +263,7 @@ class KnowledgeBase:
             competitor_id: 竞品ID过滤
             min_rating: 最低评分过滤
             top_k: 返回结果数量
+            user_id: 用户ID过滤（数据隔离）
 
         Returns:
             搜索结果列表
@@ -246,6 +273,8 @@ class KnowledgeBase:
             where["competitor_id"] = competitor_id
         if min_rating is not None:
             where["rating"] = {"$gte": min_rating}
+        if user_id:
+            where["user_id"] = user_id
 
         return self.vector_store.search(
             query=query,
@@ -320,27 +349,28 @@ class KnowledgeBase:
 
     def delete_competitor(self, competitor_id: str):
         """
-        删除竞品信息
+        删除竞品信息（包括用户评价）
 
         Args:
             competitor_id: 竞品ID
         """
-        # 获取该竞品的所有文档
-        results = self.vector_store.search(
-            query="",
-            collection_name="competitors",
-            top_k=1000,
-            where={"competitor_id": competitor_id}
-        )
-
-        if results:
-            ids = [r["id"] for r in results if r.get("id")]
-            if ids:
-                self.vector_store.delete_documents(
-                    collection_name="competitors",
-                    ids=ids
+        for collection in ("competitors", "reviews"):
+            try:
+                results = self.vector_store.search(
+                    query="",
+                    collection_name=collection,
+                    top_k=1000,
+                    where={"competitor_id": competitor_id}
                 )
-                logger.info(f"删除竞品 {competitor_id} 的 {len(ids)} 个文档")
+                ids = [r["id"] for r in results if r.get("id")]
+                if ids:
+                    self.vector_store.delete_documents(
+                        collection_name=collection,
+                        ids=ids
+                    )
+                    logger.info(f"删除竞品 {competitor_id} 在 {collection} 中的 {len(ids)} 个文档")
+            except Exception as e:
+                logger.warning(f"清理 {collection} 失败: {e}")
 
     def get_stats(self) -> Dict[str, Any]:
         """

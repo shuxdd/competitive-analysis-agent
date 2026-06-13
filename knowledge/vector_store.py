@@ -22,7 +22,8 @@ class VectorStore:
     def __init__(
         self,
         persist_dir: str = "./data/chroma",
-        anonymized_telemetry: bool = False
+        anonymized_telemetry: bool = False,
+        embedding_function=None
     ):
         """
         初始化向量数据库
@@ -30,11 +31,18 @@ class VectorStore:
         Args:
             persist_dir: 持久化目录
             anonymized_telemetry: 是否启用匿名遥测
+            embedding_function: 自定义嵌入函数，签名为 fn(inputs: List[str]) -> List[List[float]]
+                              不传则使用 Chroma 内置的 all-MiniLM-L6-v2
         """
         self.client = chromadb.PersistentClient(
             path=persist_dir,
             settings=ChromaSettings(anonymized_telemetry=anonymized_telemetry)
         )
+        self._embedding_function = embedding_function
+        if embedding_function:
+            logger.info(f"向量数据库使用自定义嵌入函数")
+        else:
+            logger.info(f"向量数据库使用 Chroma 默认嵌入")
         logger.info(f"向量数据库初始化完成，持久化目录: {persist_dir}")
 
     def get_or_create_collection(
@@ -57,7 +65,8 @@ class VectorStore:
 
         collection = self.client.get_or_create_collection(
             name=name,
-            metadata=metadata
+            metadata=metadata,
+            embedding_function=self._embedding_function
         )
         logger.info(f"获取/创建集合: {name}, 当前文档数: {collection.count()}")
         return collection

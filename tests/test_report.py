@@ -20,18 +20,8 @@ class TestReportTemplates:
         """测试列出所有模板"""
         templates = ReportTemplates.list_templates()
 
-        assert len(templates) == 3
-        types = [t["type"] for t in templates]
-        assert "quick" in types
-        assert "standard" in types
-        assert "deep" in types
-
-    def test_get_quick_template(self):
-        """测试获取快速报告模板"""
-        template = ReportTemplates.get_template("quick")
-
-        assert template["name"] == "快速报告"
-        assert len(template["sections"]) > 0
+        assert len(templates) == 1
+        assert templates[0]["type"] == "standard"
 
     def test_get_standard_template(self):
         """测试获取标准报告模板"""
@@ -39,13 +29,6 @@ class TestReportTemplates:
 
         assert template["name"] == "标准报告"
         assert "功能对比" in template["sections"]
-
-    def test_get_deep_template(self):
-        """测试获取深度报告模板"""
-        template = ReportTemplates.get_template("deep")
-
-        assert template["name"] == "深度报告"
-        assert "战略建议" in template["sections"]
 
     def test_get_default_template(self):
         """测试获取默认模板（未知类型）"""
@@ -62,7 +45,7 @@ class TestReportTemplates:
 
     def test_get_sections(self):
         """测试获取章节列表"""
-        sections = ReportTemplates.get_sections("quick")
+        sections = ReportTemplates.get_sections("standard")
 
         assert isinstance(sections, list)
         assert len(sections) > 0
@@ -107,24 +90,6 @@ class TestReportGenerator:
 
             with open(filepath, "r", encoding="utf-8") as f:
                 content = f.read()
-            assert "测试报告" in content
-
-    def test_export_html(self):
-        """测试HTML导出"""
-        with patch("report.generator.settings") as mock_settings:
-            tmpdir = tempfile.mkdtemp()
-            mock_settings.report_output_dir = tmpdir
-            generator = ReportGenerator()
-
-            report = "# 测试报告\n\n这是测试内容。"
-            filepath = generator.export_html(report, "test_report")
-
-            assert os.path.exists(filepath)
-            assert filepath.endswith(".html")
-
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-            assert "<html" in content
             assert "测试报告" in content
 
     def test_generate_fallback(self):

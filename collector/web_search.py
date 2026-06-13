@@ -47,8 +47,8 @@ class WebSearchCollector(BaseCollector):
         """获取SerpAPI客户端"""
         if self._client is None:
             try:
-                from serpapi import GoogleSearch
-                self._client = GoogleSearch
+                from serpapi import Client
+                self._client = Client(api_key=self.api_key)
             except ImportError:
                 raise ImportError("请安装serpapi: pip install serpapi")
         return self._client
@@ -84,7 +84,6 @@ class WebSearchCollector(BaseCollector):
 
         params = {
             "q": target,
-            "api_key": self.api_key,
             "num": num_results,
             "hl": self.language,
             "gl": self.country
@@ -95,7 +94,7 @@ class WebSearchCollector(BaseCollector):
 
         # 在线程池中执行同步调用
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, lambda: client(params).get_dict())
+        result = await loop.run_in_executor(None, lambda: client.search(params).as_dict())
 
         # 写入缓存（24小时）
         self._cache.set(cache_key, result, ttl=3600 * 24)

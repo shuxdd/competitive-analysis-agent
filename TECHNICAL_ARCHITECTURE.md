@@ -11,9 +11,12 @@
 | **LLM模型** | MIMO | - | 多模态、长上下文、性价比高 |
 | **向量数据库** | Chroma | 0.9+ | 轻量级、易部署、本地开发友好 |
 | **后端框架** | FastAPI | 0.136.3+ | 异步、高性能、自动文档 |
-| **前端框架** | Streamlit | 1.54+ | 快速原型、Python原生 |
-| **任务队列** | Celery + Redis | 5.6+ | 异步任务、定时任务 |
-| **缓存** | Redis Server | 8.6+ | 高性能缓存、消息队列（Python客户端 redis-py>=5.2） |
+| **前端框架** | React + TypeScript | 18+ | 组件化、类型安全、生态丰富 |
+| **UI组件库** | shadcn/ui | - | 高质量、可定制、基于Radix UI |
+| **CSS框架** | Tailwind CSS | 4+ | 原子化样式、开发效率高 |
+| **图表库** | Recharts | 2+ | React生态、声明式图表 |
+| **构建工具** | Vite | 6+ | 快速HMR、开箱即用 |
+| **认证** | JWT (PyJWT) | 2.10+ | 无状态认证、HS256签名 |
 | **数据存储** | SQLite/PostgreSQL | - | 结构化数据存储 |
 
 ### 1.2 工具与服务
@@ -47,7 +50,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                        用户界面层 (Frontend)                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Streamlit   │  │   REST API   │  │   CLI工具    │          │
+│  │    React      │  │   REST API   │  │   CLI工具    │          │
 │  │   Web应用     │  │   接口       │  │   命令行     │          │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
 └─────────┼──────────────────┼──────────────────┼─────────────────┘
@@ -105,10 +108,10 @@
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                  外部服务层 (External Services)            │   │
 │  │                                                          │   │
-│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐        │   │
-│  │  │OpenAI  │  │Claude  │  │SerpAPI │  │GitHub  │        │   │
-│  │  │API     │  │API     │  │        │  │API     │        │   │
-│  │  └────────┘  └────────┘  └────────┘  └────────┘        │   │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌───────────┐     │   │
+│  │  │ MIMO   │  │ SerpAPI│  │ Apify  │  │  iTunes   │     │   │
+│  │  │ LLM API│  │ 搜索引擎│  │应用商店  │  │ Search API│     │   │
+│  │  └────────┘  └────────┘  └────────┘  └───────────┘     │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -182,7 +185,7 @@ competitive-analysis-agent/
 │   ├── models/          # 数据模型
 │   ├── report/          # 报告生成模块
 │   └── api/             # API接口模块
-├── frontend/            # 前端模块
+├── frontend/            # React前端模块
 └── tests/               # 测试模块
 ```
 
@@ -306,7 +309,7 @@ class AgentState(TypedDict):
     """Agent状态定义"""
     # 输入
     competitors: List[str]  # 竞品列表
-    analysis_type: str  # 分析类型：quick/standard/deep
+    analysis_type: str  # 分析类型：standard
     dimensions: List[str]  # 分析维度
     
     # 中间状态
@@ -324,22 +327,24 @@ def create_analysis_graph() -> StateGraph:
     
     graph = StateGraph(AgentState)
     
-    # 添加节点
+    # 线性流程（所有分析类型统一走此路径）
     graph.add_node("planner", plan_analysis)  # 任务规划
     graph.add_node("searcher", search_competitors)  # 搜索竞品
     graph.add_node("scraper", scrape_data)  # 爬取数据
     graph.add_node("extractor", extract_info)  # 提取信息
     graph.add_node("analyzer", analyze_competitors)  # 分析对比
     graph.add_node("reporter", generate_report)  # 生成报告
+    graph.add_node("knowledge_store", store_knowledge)  # 写入知识库
     
-    # 定义边
+    # 定义边（线性）
     graph.set_entry_point("planner")
     graph.add_edge("planner", "searcher")
     graph.add_edge("searcher", "scraper")
     graph.add_edge("scraper", "extractor")
     graph.add_edge("extractor", "analyzer")
     graph.add_edge("analyzer", "reporter")
-    graph.add_edge("reporter", END)
+    graph.add_edge("reporter", "knowledge_store")
+    graph.add_edge("knowledge_store", END)
     
     return graph.compile()
 ```
@@ -1142,9 +1147,7 @@ from enum import Enum
 
 class ReportType(str, Enum):
     """报告类型"""
-    QUICK = "quick"
     STANDARD = "standard"
-    DEEP = "deep"
 
 class AnalysisDimension(str, Enum):
     """分析维度"""
@@ -1198,16 +1201,23 @@ class Report(BaseModel):
 
 | 方法 | 路径 | 描述 | 认证 |
 |------|------|------|------|
-| POST | /api/v1/analysis | 创建分析任务 | ✅ |
-| GET | /api/v1/analysis/{id} | 获取分析结果 | ✅ |
-| GET | /api/v1/analysis/{id}/report | 获取报告 | ✅ |
-| POST | /api/v1/competitors | 添加竞品 | ✅ |
-| GET | /api/v1/competitors | 获取竞品列表 | ✅ |
-| GET | /api/v1/competitors/{id} | 获取竞品详情 | ✅ |
-| PUT | /api/v1/competitors/{id} | 更新竞品 | ✅ |
-| DELETE | /api/v1/competitors/{id} | 删除竞品 | ✅ |
-| POST | /api/v1/ask | 智能问答 | ✅ |
-| GET | /api/v1/tasks/{id} | 查询任务状态 | ✅ |
+| POST | /api/auth/register | 用户注册 | ❌ |
+| POST | /api/auth/login | 用户登录（返回JWT） | ❌ |
+| POST | /api/analysis | 创建分析任务 | ✅ |
+| GET | /api/analysis | 获取任务列表 | ✅ |
+| GET | /api/analysis/{id} | 获取任务详情 | ✅ |
+| DELETE | /api/analysis/{id} | 删除任务 | ✅ |
+| POST | /api/competitors | 添加竞品 | ✅ |
+| GET | /api/competitors | 获取竞品列表 | ✅ |
+| GET | /api/competitors/{id} | 获取竞品详情 | ✅ |
+| PUT | /api/competitors/{id} | 更新竞品 | ✅ |
+| DELETE | /api/competitors/{id} | 删除竞品 | ✅ |
+| GET | /api/reports | 获取报告列表 | ✅ |
+| GET | /api/reports/{id} | 获取报告详情 | ✅ |
+| DELETE | /api/reports/{id} | 删除报告 | ✅ |
+| GET | /api/reports/{id}/export | 导出报告 | ✅ |
+| POST | /api/qa/ask | 智能问答 | ✅ |
+| WS | /ws/analysis/{id} | 分析进度推送 | ✅ (JWT token) |
 
 ### 4.2 接口详细设计
 
@@ -1331,70 +1341,58 @@ Authorization: Bearer {token}
 ### 5.2 SQLite表设计
 
 ```sql
--- 竞品表
-CREATE TABLE competitors (
+-- 用户表
+CREATE TABLE users (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    company_name TEXT,
-    website TEXT,
-    founded TEXT,
-    location TEXT,
-    funding TEXT,
-    employees TEXT,
-    target_market TEXT,
-    key_differentiators TEXT,  -- JSON数组
-    sources TEXT,  -- JSON数组
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    username TEXT UNIQUE NOT NULL,
+    email TEXT,
+    hashed_password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 产品表
-CREATE TABLE products (
+-- 竞品表（含应用商店 ID）
+CREATE TABLE competitors (
     id TEXT PRIMARY KEY,
-    competitor_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    description TEXT,
-    features TEXT,  -- JSON数组
-    pricing TEXT,  -- JSON对象
-    url TEXT,
+    website TEXT,
+    industry TEXT,
+    tags TEXT,  -- JSON数组
+    notes TEXT,
+    google_play_id TEXT,  -- Google Play 包名
+    app_store_id TEXT,    -- App Store trackId
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (competitor_id) REFERENCES competitors(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- 分析任务表
 CREATE TABLE analysis_tasks (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
     competitors TEXT NOT NULL,  -- JSON数组
     analysis_type TEXT NOT NULL,
     dimensions TEXT,  -- JSON数组
+    my_product TEXT,
     status TEXT DEFAULT 'pending',
-    results TEXT,  -- JSON对象
-    report TEXT,
+    result TEXT,  -- JSON对象
     error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP
+    completed_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- 竞品更新记录表
-CREATE TABLE competitor_updates (
+-- 报告表
+CREATE TABLE reports (
     id TEXT PRIMARY KEY,
-    competitor_id TEXT NOT NULL,
-    update_type TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    analysis_id TEXT NOT NULL,
     title TEXT,
+    report_type TEXT DEFAULT 'standard',
+    format TEXT DEFAULT 'markdown',
     content TEXT,
-    source TEXT,
-    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (competitor_id) REFERENCES competitors(id)
-);
-
--- 用户表（可选）
-CREATE TABLE users (
-    id TEXT PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE,
-    hashed_password TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
 
@@ -1402,20 +1400,15 @@ CREATE TABLE users (
 
 ```
 Collections:
-├── competitors  # 竞品信息向量
-│   ├── documents: 竞品描述文本
-│   ├── metadatas: {competitor_id, type, source}
-│   └── embeddings: text-embedding-3-small
-│
-├── products  # 产品信息向量
-│   ├── documents: 产品功能描述
-│   ├── metadatas: {product_id, competitor_id}
-│   └── embeddings: text-embedding-3-small
+├── competitors  # 竞品信息 + 网页内容向量
+│   ├── documents: 竞品描述/网页内容
+│   ├── metadatas: {competitor_id, type, user_id, source}
+│   └── embeddings: openai / Chroma内置(all-MiniLM-L6-v2)
 │
 └── reviews  # 用户评价向量
     ├── documents: 评价内容
-    ├── metadatas: {competitor_id, rating, source}
-    └── embeddings: text-embedding-3-small
+    ├── metadatas: {competitor_id, rating, source, user_id}
+    └── embeddings: openai / Chroma内置(all-MiniLM-L6-v2)
 ```
 
 ---
@@ -1447,15 +1440,15 @@ services:
       - redis
     restart: unless-stopped
 
-  # Streamlit前端
+  # React前端
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "8501:8501"
+      - "3000:3000"
     environment:
-      - API_URL=http://api:8000
+      - VITE_API_URL=http://api:8000
     depends_on:
       - api
     restart: unless-stopped
@@ -1515,10 +1508,14 @@ CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 **开发环境**
 ```bash
-# 本地开发
+# 后端
 uv pip install -e ".[dev]"
 uvicorn src.api.app:app --reload
-streamlit run frontend/app.py
+
+# 前端
+cd frontend
+npm install
+npm run dev
 ```
 
 **生产环境**
@@ -1701,4 +1698,7 @@ REQUEST_DELAY=1.0
 - [LangGraph文档](https://langchain-ai.github.io/langgraph/)
 - [FastAPI文档](https://fastapi.tiangolo.com/)
 - [Chroma文档](https://docs.trychroma.com/)
-- [Streamlit文档](https://docs.streamlit.io/)
+- [React文档](https://react.dev/)
+- [shadcn/ui文档](https://ui.shadcn.com/)
+- [Tailwind CSS文档](https://tailwindcss.com/)
+- [Recharts文档](https://recharts.org/)

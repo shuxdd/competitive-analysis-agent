@@ -30,6 +30,27 @@ class PaginatedResponse(BaseModel):
     message: str = "success"
 
 
+# ==================== 认证 ====================
+
+class RegisterRequest(BaseModel):
+    """注册请求"""
+    username: str = Field(..., min_length=2, max_length=50, description="用户名")
+    password: str = Field(..., min_length=6, max_length=100, description="密码")
+    display_name: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    """登录请求"""
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    """Token 响应"""
+    token: str
+    user: dict
+
+
 # ==================== 竞品 ====================
 
 class CompetitorCreateRequest(BaseModel):
@@ -39,6 +60,8 @@ class CompetitorCreateRequest(BaseModel):
     industry: Optional[str] = None
     tags: List[str] = []
     notes: Optional[str] = None
+    google_play_id: Optional[str] = None
+    app_store_id: Optional[str] = None
 
 
 class CompetitorUpdateRequest(BaseModel):
@@ -48,6 +71,8 @@ class CompetitorUpdateRequest(BaseModel):
     industry: Optional[str] = None
     tags: Optional[List[str]] = None
     notes: Optional[str] = None
+    google_play_id: Optional[str] = None
+    app_store_id: Optional[str] = None
 
 
 class CompetitorResponse(BaseModel):
@@ -58,6 +83,8 @@ class CompetitorResponse(BaseModel):
     industry: Optional[str] = None
     tags: List[str] = []
     notes: Optional[str] = None
+    google_play_id: Optional[str] = None
+    app_store_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

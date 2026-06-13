@@ -14,8 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.database import AnalysisTaskORM, ReportORM, get_session
+from api.database import AnalysisTaskORM, ReportORM, UserORM, get_session
 from api.schemas import AnalysisSubmitRequest
+from api.auth import require_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,9 +41,9 @@ def _orm_to_response(orm: AnalysisTaskORM) -> dict:
     }
 
 
-async def _run_analysis(task_id: str):
+async def _run_analysis(task_id: str, user_id: str):
     """后台执行分析任务"""
-    from api.database import async_session
+    from api.database import async_session, CompetitorORM
     from agent.graph import create_analysis_graph
     from api.app import progress_manager
 
@@ -63,6 +64,22 @@ async def _run_analysis(task_id: str):
             task.status = "planning"
             await session.commit()
 
+            # 查询竞品详情，构建 competitors_meta
+            competitors_meta = {}
+            if task.competitors:
+                comp_result = await session.execute(
+                    select(CompetitorORM).where(
+                        CompetitorORM.name.in_(task.competitors),
+                        CompetitorORM.user_id == user_id,
+                    )
+                )
+                for comp in comp_result.scalars().all():
+                    competitors_meta[comp.name] = {
+                        "tags": comp.tags or [],
+                        "google_play_id": comp.google_play_id,
+                        "app_store_id": comp.app_store_id,
+                    }
+
             graph = create_analysis_graph()
             task.status = "collecting"
             await session.commit()
@@ -72,7 +89,8 @@ async def _run_analysis(task_id: str):
                 "analysis_type": task.analysis_type,
                 "dimensions": task.dimensions or ["features", "pricing", "swot"],
                 "my_product": task.my_product,
-                "collection_plan": {},
+                "user_id": user_id,
+                "collection_plan": {"competitors_meta": competitors_meta},
                 "raw_data": [],
                 "extracted_info": [],
                 "analysis_results": {},
@@ -82,17 +100,21 @@ async def _run_analysis(task_id: str):
                 "progress_callback": on_progress,
             })
 
+            errors = graph_result.get("errors", [])
             task.status = "completed"
             task.result = {
                 "report": graph_result.get("report", ""),
                 "analysis_results": graph_result.get("analysis_results", {}),
-                "errors": graph_result.get("errors", []),
+                "errors": errors,
             }
+            if errors:
+                task.error_message = "分析完成，但存在警告：\n" + "\n".join(errors[:5])
             task.completed_at = datetime.now()
             await session.commit()
 
             if graph_result.get("report"):
                 report_orm = ReportORM(
+                    user_id=user_id,
                     analysis_id=task_id,
                     title=f"竞品分析报告 - {', '.join(task.competitors)}",
                     report_type=task.analysis_type,
@@ -119,9 +141,11 @@ async def _run_analysis(task_id: str):
 async def submit_analysis(
     req: AnalysisSubmitRequest,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """提交分析任务"""
     orm = AnalysisTaskORM(
+        user_id=user.id,
         competitors=req.competitors,
         analysis_type=req.analysis_type,
         dimensions=req.dimensions,
@@ -132,8 +156,8 @@ async def submit_analysis(
     await session.commit()
     await session.refresh(orm)
 
-    # 启动后台任务
-    task = asyncio.create_task(_run_analysis(orm.id))
+    # 启动后台任务（带 user_id）
+    task = asyncio.create_task(_run_analysis(orm.id, user.id))
     _running_tasks[orm.id] = task
 
     logger.info(f"提交分析任务: {orm.id}, 竞品: {req.competitors}")
@@ -150,9 +174,10 @@ async def list_tasks(
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """获取任务列表"""
-    query = select(AnalysisTaskORM)
+    query = select(AnalysisTaskORM).where(AnalysisTaskORM.user_id == user.id)
 
     if status:
         query = query.where(AnalysisTaskORM.status == status)
@@ -179,10 +204,14 @@ async def list_tasks(
 async def get_task(
     task_id: str,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """获取任务详情"""
     result = await session.execute(
-        select(AnalysisTaskORM).where(AnalysisTaskORM.id == task_id)
+        select(AnalysisTaskORM).where(
+            AnalysisTaskORM.id == task_id,
+            AnalysisTaskORM.user_id == user.id,
+        )
     )
     orm = result.scalar_one_or_none()
 
@@ -196,10 +225,14 @@ async def get_task(
 async def delete_task(
     task_id: str,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """取消/删除任务"""
     result = await session.execute(
-        select(AnalysisTaskORM).where(AnalysisTaskORM.id == task_id)
+        select(AnalysisTaskORM).where(
+            AnalysisTaskORM.id == task_id,
+            AnalysisTaskORM.user_id == user.id,
+        )
     )
     orm = result.scalar_one_or_none()
 

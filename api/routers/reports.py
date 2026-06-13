@@ -15,6 +15,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import AnalysisTaskORM, ReportORM, get_session
+from api.auth import require_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,9 +42,10 @@ async def list_reports(
     analysis_id: Optional[str] = None,
     report_type: Optional[str] = None,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """获取报告列表"""
-    query = select(ReportORM)
+    query = select(ReportORM).where(ReportORM.user_id == user.id)
 
     if analysis_id:
         query = query.where(ReportORM.analysis_id == analysis_id)
@@ -68,20 +70,30 @@ async def list_reports(
     }
 
 
+async def _get_user_report(
+    report_id: str, user_id: str, session: AsyncSession
+) -> ReportORM:
+    """获取用户自己的报告"""
+    result = await session.execute(
+        select(ReportORM).where(
+            ReportORM.id == report_id,
+            ReportORM.user_id == user_id,
+        )
+    )
+    orm = result.scalar_one_or_none()
+    if not orm:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    return orm
+
+
 @router.get("/{report_id}")
 async def get_report(
     report_id: str,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """获取报告详情"""
-    result = await session.execute(
-        select(ReportORM).where(ReportORM.id == report_id)
-    )
-    orm = result.scalar_one_or_none()
-
-    if not orm:
-        raise HTTPException(status_code=404, detail="报告不存在")
-
+    orm = await _get_user_report(report_id, user.id, session)
     return {"code": 200, "data": _orm_to_response(orm), "message": "success"}
 
 
@@ -89,21 +101,21 @@ async def get_report(
 async def get_report_chart_data(
     report_id: str,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """获取报告对应的分析结果数据（用于图表渲染）"""
+    await _get_user_report(report_id, user.id, session)
+
+    # 获取关联的分析任务（也在用户的范围内）
     result = await session.execute(
-        select(ReportORM).where(ReportORM.id == report_id)
+        select(AnalysisTaskORM).where(
+            AnalysisTaskORM.id == select(ReportORM.analysis_id).where(
+                ReportORM.id == report_id, ReportORM.user_id == user.id
+            ).scalar_subquery(),
+            AnalysisTaskORM.user_id == user.id,
+        )
     )
-    report = result.scalar_one_or_none()
-
-    if not report:
-        raise HTTPException(status_code=404, detail="报告不存在")
-
-    # 获取关联的分析任务
-    task_result = await session.execute(
-        select(AnalysisTaskORM).where(AnalysisTaskORM.id == report.analysis_id)
-    )
-    task = task_result.scalar_one_or_none()
+    task = result.scalar_one_or_none()
 
     if not task or not task.result:
         return {"code": 200, "data": None, "message": "无分析数据"}
@@ -128,44 +140,26 @@ async def get_report_chart_data(
 @router.get("/{report_id}/export")
 async def export_report(
     report_id: str,
-    format: str = Query("markdown", pattern="^(markdown|html|pdf)$"),
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
-    """导出报告文件"""
-    result = await session.execute(
-        select(ReportORM).where(ReportORM.id == report_id)
-    )
-    orm = result.scalar_one_or_none()
-
-    if not orm:
-        raise HTTPException(status_code=404, detail="报告不存在")
+    """导出报告文件（Markdown）"""
+    orm = await _get_user_report(report_id, user.id, session)
 
     content = orm.content
-    filename = orm.title
+    filename = f"{orm.title}.md"
+    buffer = BytesIO(content.encode("utf-8"))
 
-    if format == "pdf":
-        from report.generator import ReportGenerator
-        generator = ReportGenerator()
-        pdf_bytes = generator.export_pdf_bytes(content)
-        buffer = BytesIO(pdf_bytes)
-        media_type = "application/pdf"
-        filename = f"{filename}.pdf"
-    elif format == "html":
-        from report.generator import ReportGenerator
-        generator = ReportGenerator()
-        html_content = generator._markdown_to_html(content)
-        buffer = BytesIO(html_content.encode("utf-8"))
-        media_type = "text/html"
-        filename = f"{filename}.html"
-    else:
-        buffer = BytesIO(content.encode("utf-8"))
-        media_type = "text/markdown"
-        filename = f"{filename}.md"
+    # RFC 5987: 文件名含非 ASCII 字符时使用 filename* 编码
+    from urllib.parse import quote
+    ascii_filename = filename.encode('ascii', errors='ignore').decode('ascii')
+    encoded_filename = quote(filename, safe='')
+    disposition = f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
 
     return StreamingResponse(
         buffer,
-        media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        media_type="text/markdown",
+        headers={"Content-Disposition": disposition},
     )
 
 
@@ -173,16 +167,10 @@ async def export_report(
 async def delete_report(
     report_id: str,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ):
     """删除报告"""
-    result = await session.execute(
-        select(ReportORM).where(ReportORM.id == report_id)
-    )
-    orm = result.scalar_one_or_none()
-
-    if not orm:
-        raise HTTPException(status_code=404, detail="报告不存在")
-
+    orm = await _get_user_report(report_id, user.id, session)
     await session.delete(orm)
     await session.commit()
 
