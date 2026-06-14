@@ -32,6 +32,7 @@ async def generate_report(state: AgentState) -> dict:
     analysis_results = state.get("analysis_results", {})
     competitors = state.get("competitors", [])
     my_product = state.get("my_product")
+    dimensions = state.get("dimensions", ["features", "pricing", "swot"])
 
     # 提取用户填写的竞品补充信息
     competitors_meta = state.get("collection_plan", {}).get("competitors_meta", {})
@@ -40,16 +41,31 @@ async def generate_report(state: AgentState) -> dict:
         if meta.get("notes"):
             competitor_notes[name] = meta["notes"]
 
+    # 根据勾选的维度动态生成章节
+    dimension_sections = {
+        "features": "### 3. 功能对比\n- 功能矩阵表格（功能 vs 竞品，打勾/打叉）\n- 关键差异点分析",
+        "pricing": "### 4. 定价分析\n- 定价模式对比表格\n- 性价比分析",
+        "swot": "### 5. SWOT对比\n- 每个竞品的SWOT要点\n- 横向对比总结",
+        "reviews": "### 6. 用户评价\n- 各竞品评分对比\n- 用户评价关键词和趋势",
+    }
+    section_order = ["features", "pricing", "swot", "reviews"]
+    selected_sections = [dimension_sections[d] for d in section_order if d in dimensions]
+    if not selected_sections:
+        selected_sections = [dimension_sections[d] for d in section_order]
+
     try:
         llm = create_llm(temperature=0.3, max_tokens=8192)
 
         # 根据是否有我方产品选择模板
         report_type = "comparison" if my_product else "standard"
         template_label = "对比分析" if my_product else "标准分析"
-        logger.info(f"使用{template_label}模板")
+        logger.info(f"使用{template_label}模板，维度: {', '.join(dimensions)}")
 
         analysis_data = _prepare_analysis_data(analysis_results, competitors, my_product, competitor_notes)
-        prompt = ReportTemplates.get_prompt(report_type).format(analysis_data=analysis_data)
+        prompt = ReportTemplates.get_prompt(report_type).format(
+            analysis_data=analysis_data,
+            sections="\n\n".join(selected_sections),
+        )
 
         response = await retry_async(lambda: llm.ainvoke(prompt))
         report = response.content
