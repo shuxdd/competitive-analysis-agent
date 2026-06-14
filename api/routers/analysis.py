@@ -80,12 +80,17 @@ async def _run_analysis(task_id: str, user_id: str):
                         "app_store_id": comp.app_store_id,
                     }
 
+            # 如果填写了我的产品，加入竞品队列走完整采集流程
+            all_competitors = list(task.competitors)
+            if task.my_product and task.my_product not in all_competitors:
+                all_competitors.append(task.my_product)
+
             graph = create_analysis_graph()
             task.status = "collecting"
             await session.commit()
 
             graph_result = await graph.ainvoke({
-                "competitors": task.competitors,
+                "competitors": all_competitors,
                 "analysis_type": task.analysis_type,
                 "dimensions": task.dimensions or ["features", "pricing", "swot"],
                 "my_product": task.my_product,

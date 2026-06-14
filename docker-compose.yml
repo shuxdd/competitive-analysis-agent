@@ -1,6 +1,44 @@
-version: "3.8"
+# =========================================
+# 智能竞品分析 Agent - Docker Compose
+# 使用方式：docker-compose up -d
+# =========================================
 
 services:
+  # -------- 后端 API --------
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - CHROMA_PERSIST_DIR=/data/chroma
+      - REPORT_OUTPUT_DIR=/data/reports
+    volumes:
+      - app_data:/data
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # -------- 前端（Nginx 托管 + 反向代理 API）--------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # -------- Redis（缓存 + 未来任务队列）--------
   redis:
     image: redis:8-alpine
     ports:
@@ -8,6 +46,12 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
+  app_data:
   redis_data:

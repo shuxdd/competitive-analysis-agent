@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from config.settings import settings
 from api.database import init_db
 from api.routers import register_routers
 from api.auth import verify_token
@@ -79,7 +80,7 @@ def create_app() -> FastAPI:
     # CORS 中间件（前后端分离需要）
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

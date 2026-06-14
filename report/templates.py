@@ -6,7 +6,7 @@
 """
 
 from typing import Dict, List
-from config.prompts import REPORT_PROMPT
+from config.prompts import REPORT_PROMPT, COMPARISON_REPORT_PROMPT
 
 
 class ReportTemplates:
@@ -27,6 +27,20 @@ class ReportTemplates:
                 "建议",
             ],
             "prompt": REPORT_PROMPT,
+        },
+        "comparison": {
+            "name": "对比分析报告",
+            "description": "我方产品 vs 竞品的对比分析",
+            "sections": [
+                "执行摘要",
+                "我方 vs 竞品概览",
+                "功能对比",
+                "定价对比",
+                "SWOT 对比",
+                "竞争格局",
+                "战略建议",
+            ],
+            "prompt": COMPARISON_REPORT_PROMPT,
         },
     }
 

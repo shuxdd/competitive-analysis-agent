@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-change-in-production"
     jwt_expire_hours: int = 24
 
+    # CORS 配置（生产环境改为具体域名，多个用逗号分隔）
+    cors_origins: str = ""
+
     # 日志配置
     log_level: str = "INFO"
 

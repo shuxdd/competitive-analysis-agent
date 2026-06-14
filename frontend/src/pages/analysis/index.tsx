@@ -44,7 +44,7 @@ const analysisDimensions = [
   { id: 'features', label: '功能特性' },
   { id: 'pricing', label: '定价策略' },
   { id: 'swot', label: 'SWOT 分析' },
-  { id: 'marketing', label: '营销策略' },
+  { id: 'reviews', label: '用户评价' },
 ]
 
 export default function AnalysisList() {

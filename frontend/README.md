@@ -112,7 +112,7 @@ frontend/
 创建 `.env` 文件（可选）：
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 ```
 
 默认连接 http://localhost:8000

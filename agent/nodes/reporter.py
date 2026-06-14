@@ -31,13 +31,18 @@ async def generate_report(state: AgentState) -> dict:
 
     analysis_results = state.get("analysis_results", {})
     competitors = state.get("competitors", [])
+    my_product = state.get("my_product")
 
     try:
         llm = create_llm(temperature=0.3, max_tokens=8192)
 
-        # 用完整分析数据生成报告
-        analysis_data = _prepare_analysis_data(analysis_results, competitors)
-        prompt = ReportTemplates.get_prompt("standard").format(analysis_data=analysis_data)
+        # 根据是否有我方产品选择模板
+        report_type = "comparison" if my_product else "standard"
+        template_label = "对比分析" if my_product else "标准分析"
+        logger.info(f"使用{template_label}模板")
+
+        analysis_data = _prepare_analysis_data(analysis_results, competitors, my_product)
+        prompt = ReportTemplates.get_prompt(report_type).format(analysis_data=analysis_data)
 
         response = await retry_async(lambda: llm.ainvoke(prompt))
         report = response.content
@@ -65,16 +70,19 @@ async def generate_report(state: AgentState) -> dict:
         }
 
 
-def _prepare_analysis_data(analysis_results: dict, competitors: list) -> str:
-    """准备报告所需的分析数据，委托给 utils 模块"""
+def _prepare_analysis_data(analysis_results: dict, competitors: list, my_product: str = None) -> str:
+    """准备报告所需的分析数据，只包含实际完成的维度"""
+    dimension_keys = ["feature_matrix", "pricing_comparison", "swot_analysis", "review_analysis"]
     data = {
         "competitors": competitors,
         "analysis_summary": analysis_results.get("summary", ""),
-        "feature_matrix": analysis_results.get("feature_matrix", {}),
-        "pricing_comparison": analysis_results.get("pricing_comparison", {}),
-        "swot_analysis": analysis_results.get("swot_analysis", {}),
-        "review_analysis": analysis_results.get("review_analysis", {})
     }
+    if my_product:
+        data["my_product"] = my_product
+    for key in dimension_keys:
+        val = analysis_results.get(key)
+        if val:
+            data[key] = val
 
     return prepare_analysis_data(data)
 

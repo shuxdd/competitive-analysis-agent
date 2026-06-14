@@ -20,8 +20,9 @@ class TestReportTemplates:
         """测试列出所有模板"""
         templates = ReportTemplates.list_templates()
 
-        assert len(templates) == 1
+        assert len(templates) == 2
         assert templates[0]["type"] == "standard"
+        assert templates[1]["type"] == "comparison"
 
     def test_get_standard_template(self):
         """测试获取标准报告模板"""

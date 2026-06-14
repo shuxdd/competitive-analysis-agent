@@ -22,7 +22,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { analysisApi, reportApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import type { AnalysisTask } from '@/types'
 
 const dimensionLabels: Record<string, string> = {
   features: '功能特性',
@@ -63,7 +62,7 @@ export default function AnalysisDetail() {
     enabled: !!id,
     refetchInterval: (query) => {
       const status = query.state.data?.data?.data?.status
-      if (status === 'running' || status === 'pending') return 5000
+      if (status && status !== 'completed' && status !== 'failed') return 3000
       return false
     },
   })
@@ -76,7 +75,10 @@ export default function AnalysisDetail() {
     if (task.status !== 'running' && task.status !== 'pending' && task.status !== 'collecting' && task.status !== 'planning') return
 
     const token = localStorage.getItem('auth_token')
-    const wsUrl = `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace('http', 'ws')}/ws/analysis/${id}?token=${token}`
+    const apiUrl = import.meta.env.VITE_API_URL || ''
+    const wsUrl = apiUrl
+      ? `${apiUrl.replace('http', 'ws')}/ws/analysis/${id}?token=${token}`
+      : `/ws/analysis/${id}?token=${token}`
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
@@ -103,6 +105,7 @@ export default function AnalysisDetail() {
 
     ws.onclose = () => {
       console.log('[WS] 已断开')
+      queryClient.invalidateQueries({ queryKey: ['analysis-task', id] })
     }
 
     ws.onerror = (e) => {

@@ -40,7 +40,7 @@ export interface AnalysisTask {
   analysis_type: string
   dimensions: string[]
   my_product?: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'planning' | 'collecting' | 'completed' | 'failed'
   result?: Record<string, unknown>
   error_message?: string
   created_at?: string

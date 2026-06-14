@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.pyc
+.env
+data
+logs
+dist
+node_modules
+.git
+.github
+.pytest_cache
+*.egg-info
+examples
+*.md
+LICENSE
