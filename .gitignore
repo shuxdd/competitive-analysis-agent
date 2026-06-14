@@ -53,6 +53,9 @@ reports/
 *.pdf
 *.html
 
+# 前端 index.html 需要被 git 追踪
+!frontend/index.html
+
 # Logs
 logs/
 *.log
