@@ -137,19 +137,21 @@ async def create_competitor(
         industry=req.industry,
         tags=req.tags,
         notes=req.notes,
+        google_play_id=req.google_play_id,
+        app_store_id=req.app_store_id,
     )
     session.add(orm)
     await session.commit()
 
-    # 自动查找应用商店 ID（仅当用户未提供时）
+    # 自动查找缺失的应用商店 ID
     store_ids = {}
     if not req.google_play_id or not req.app_store_id:
         store_ids = await _auto_detect_store_ids(req.name)
-    if store_ids.get("google_play_id") and not req.google_play_id:
+    if store_ids.get("google_play_id") and not orm.google_play_id:
         orm.google_play_id = store_ids["google_play_id"]
-    if store_ids.get("app_store_id") and not req.app_store_id:
+    if store_ids.get("app_store_id") and not orm.app_store_id:
         orm.app_store_id = store_ids["app_store_id"]
-    if orm.google_play_id not in (None, req.google_play_id) or orm.app_store_id not in (None, req.app_store_id):
+    if store_ids.get("google_play_id") or store_ids.get("app_store_id"):
         orm.updated_at = datetime.now()
         await session.commit()
 
