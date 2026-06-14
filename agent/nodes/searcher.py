@@ -68,12 +68,17 @@ async def _collect_one(
     """
     name_lower = name.lower()
     extra_sources = _get_extra_sources(name, plan)
+    source_names = ["web_search"] + [s for s in extra_sources]
     # 从 competitors_meta 读取显式配置
     competitors_meta = plan.get("competitors_meta", {})
     meta = competitors_meta.get(name, {})
     google_play_id = meta.get("google_play_id") or None
     app_store_id = meta.get("app_store_id") or None
     github_repo = meta.get("github_repo") or None
+    logger.info(f"  [{name}] 数据源: {', '.join(source_names)}" +
+                (f" (Google Play: {google_play_id})" if google_play_id else "") +
+                (f" (App Store: {app_store_id})" if app_store_id else "") +
+                (f" (GitHub: {github_repo})" if github_repo else ""))
     tasks = []
 
     # 1. 网页搜索（始终执行）
@@ -84,7 +89,10 @@ async def _collect_one(
                     name, keywords=keywords or None, num_results=5
                 )
             )
-            logger.info(f"  [{name}] 搜索完成，{result.get('total_results', 0)} 条结果")
+            results_list = result.get("results", [])
+            logger.info(f"  [{name}] 网页搜索完成，{result.get('total_results', 0)} 条结果")
+            for i, r in enumerate(results_list[:3], 1):
+                logger.info(f"    [{i}] {r.get('title', '')} — {r.get('url', '')}")
             return {"competitor": name, "source": "web_search", "data": result}
         except Exception as e:
             logger.warning(f"  [{name}] 搜索失败: {e}")
@@ -96,37 +104,55 @@ async def _collect_one(
     if "github" in extra_sources and github_repo:
         async def _gh(rn=github_repo):
             try:
-                result = await github_collector.run(rn)
-                logger.info(f"  [{name}] GitHub 完成: ⭐{result.get('data', {}).get('stars', 0)}")
-                return {"competitor": name, "source": "github", "data": result.get("data", {})}
+                result = await retry_async(lambda: github_collector.run(rn))
+                data = result.get("data", {})
+                logger.info(f"  [{name}] GitHub 完成: ⭐{data.get('stars', 0)} forks:{data.get('forks', 0)} "
+                           f"commits:{data.get('recent_commits', 0)} releases:{data.get('recent_releases', 0)}")
+                return {"competitor": name, "source": "github", "data": data}
             except Exception as e:
-                logger.warning(f"  [{name}] GitHub 失败: {e}")
+                logger.warning(f"  [{name}] GitHub 失败（重试后）: {e}")
                 return None
         tasks.append(_gh())
 
     # 3. Google Play（按需）
-    if "google_play" in extra_sources and google_play_id:
-        async def _gp(aid=google_play_id):
-            try:
-                result = await apify_collector.run(aid, store="google")
-                logger.info(f"  [{name}] Google Play 完成: ⭐{result.get('data', {}).get('rating', 0)}")
-                return {"competitor": name, "source": "google_play", "data": result.get("data", {})}
-            except Exception as e:
-                logger.warning(f"  [{name}] Google Play 失败: {e}")
-                return None
-        tasks.append(_gp())
+    if "google_play" in extra_sources:
+        if google_play_id:
+            async def _gp(aid=google_play_id):
+                try:
+                    result = await retry_async(lambda: apify_collector.run(aid, store="google"))
+                    data = result.get("data", {})
+                    reviews = data.get("reviews", [])
+                    logger.info(f"  [{name}] Google Play 完成: ⭐{data.get('rating', 0)} "
+                               f"共{data.get('ratings_count', 0)}条评论")
+                    if reviews:
+                        logger.info(f"    [{name}] 最新评价: {reviews[0].get('text', '')[:80]}...")
+                    return {"competitor": name, "source": "google_play", "data": data}
+                except Exception as e:
+                    logger.warning(f"  [{name}] Google Play 失败（重试后）: {e}")
+                    return None
+            tasks.append(_gp())
+        else:
+            logger.info(f"  [{name}] Google Play 跳过: 未配置 google_play_id")
 
     # 4. App Store（按需）
-    if "app_store" in extra_sources and app_store_id:
-        async def _as(aid=app_store_id):
-            try:
-                result = await apify_collector.run(aid, store="apple")
-                logger.info(f"  [{name}] App Store 完成: ⭐{result.get('data', {}).get('rating', 0)}")
-                return {"competitor": name, "source": "app_store", "data": result.get("data", {})}
-            except Exception as e:
-                logger.warning(f"  [{name}] App Store 失败: {e}")
-                return None
-        tasks.append(_as())
+    if "app_store" in extra_sources:
+        if app_store_id:
+            async def _as(aid=app_store_id):
+                try:
+                    result = await retry_async(lambda: apify_collector.run(aid, store="apple"))
+                    data = result.get("data", {})
+                    reviews = data.get("reviews", [])
+                    logger.info(f"  [{name}] App Store 完成: ⭐{data.get('rating', 0)} "
+                               f"共{data.get('ratings_count', 0)}条评论")
+                    if reviews:
+                        logger.info(f"    [{name}] 最新评价: {reviews[0].get('text', '')[:80]}...")
+                    return {"competitor": name, "source": "app_store", "data": data}
+                except Exception as e:
+                    logger.warning(f"  [{name}] App Store 失败（重试后）: {e}")
+                    return None
+            tasks.append(_as())
+        else:
+            logger.info(f"  [{name}] App Store 跳过: 未配置 app_store_id")
 
     # 并行执行所有数据源采集
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -200,7 +226,13 @@ async def search_competitors(state: AgentState) -> dict:
         else:
             all_results.extend(result)
 
-    logger.info(f"搜索完成，共处理 {len(competitors)} 个竞品，{len(all_results)} 条结果")
+    # 汇总各数据源结果数量
+    source_counts = {}
+    for r in all_results:
+        src = r.get("source", "unknown")
+        source_counts[src] = source_counts.get(src, 0) + 1
+    logger.info(f"搜索完成，共处理 {len(competitors)} 个竞品，{len(all_results)} 条结果 | " +
+                " | ".join(f"{k}={v}" for k, v in source_counts.items()))
     report_progress(state.get("progress_callback"), "searcher")
     return {
         "raw_data": all_results,
