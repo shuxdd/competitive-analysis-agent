@@ -78,6 +78,7 @@ async def _run_analysis(task_id: str, user_id: str):
                         "tags": comp.tags or [],
                         "google_play_id": comp.google_play_id,
                         "app_store_id": comp.app_store_id,
+                        "notes": comp.notes,
                     }
 
             # 如果填写了我的产品，加入竞品队列走完整采集流程

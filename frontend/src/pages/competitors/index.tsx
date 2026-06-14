@@ -44,7 +44,6 @@ export default function CompetitorList() {
   const [editingCompetitor, setEditingCompetitor] = useState<Competitor | null>(null)
   const [formData, setFormData] = useState<CompetitorCreateRequest>({
     name: '',
-    website: '',
     industry: '',
     tags: [],
     notes: '',
@@ -98,7 +97,7 @@ export default function CompetitorList() {
   const totalPages = Math.ceil(total / 10)
 
   const resetForm = () => {
-    setFormData({ name: '', website: '', industry: '', tags: [], notes: '' })
+    setFormData({ name: '', industry: '', tags: [], notes: '' })
     setEditingCompetitor(null)
   }
 
@@ -111,7 +110,6 @@ export default function CompetitorList() {
     setEditingCompetitor(competitor)
     setFormData({
       name: competitor.name,
-      website: competitor.website || '',
       industry: competitor.industry || '',
       tags: competitor.tags,
       notes: competitor.notes || '',
@@ -327,18 +325,6 @@ export default function CompetitorList() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="website">官网</Label>
-              <Input
-                id="website"
-                placeholder="https://example.com"
-                value={formData.website}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, website: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="industry">行业</Label>
               <Input
                 id="industry"
@@ -361,10 +347,10 @@ export default function CompetitorList() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">备注</Label>
+              <Label htmlFor="notes">竞品信息 <span className="text-xs text-muted-foreground font-normal">（将融入分析报告）</span></Label>
               <Textarea
                 id="notes"
-                placeholder="添加备注信息..."
+                placeholder="填写你了解的这个竞品的额外信息，如公司背景、产品定位、目标用户等，这些信息会出现在分析报告中"
                 value={formData.notes}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, notes: e.target.value }))

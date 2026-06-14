@@ -33,6 +33,13 @@ async def generate_report(state: AgentState) -> dict:
     competitors = state.get("competitors", [])
     my_product = state.get("my_product")
 
+    # 提取用户填写的竞品补充信息
+    competitors_meta = state.get("collection_plan", {}).get("competitors_meta", {})
+    competitor_notes = {}
+    for name, meta in competitors_meta.items():
+        if meta.get("notes"):
+            competitor_notes[name] = meta["notes"]
+
     try:
         llm = create_llm(temperature=0.3, max_tokens=8192)
 
@@ -41,7 +48,7 @@ async def generate_report(state: AgentState) -> dict:
         template_label = "对比分析" if my_product else "标准分析"
         logger.info(f"使用{template_label}模板")
 
-        analysis_data = _prepare_analysis_data(analysis_results, competitors, my_product)
+        analysis_data = _prepare_analysis_data(analysis_results, competitors, my_product, competitor_notes)
         prompt = ReportTemplates.get_prompt(report_type).format(analysis_data=analysis_data)
 
         response = await retry_async(lambda: llm.ainvoke(prompt))
@@ -70,11 +77,12 @@ async def generate_report(state: AgentState) -> dict:
         }
 
 
-def _prepare_analysis_data(analysis_results: dict, competitors: list, my_product: str = None) -> str:
+def _prepare_analysis_data(analysis_results: dict, competitors: list, my_product: str = None, competitor_notes: dict = None) -> str:
     """准备报告所需的分析数据，只包含实际完成的维度"""
     dimension_keys = ["feature_matrix", "pricing_comparison", "swot_analysis", "review_analysis"]
     data = {
         "competitors": competitors,
+        "competitor_notes": competitor_notes or {},
         "analysis_summary": analysis_results.get("summary", ""),
     }
     if my_product:

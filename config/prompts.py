@@ -98,6 +98,8 @@ REPORT_PROMPT = """
 分析数据：
 {analysis_data}
 
+注意：competitor_notes 是用户填写的竞品补充信息，值得重点关注，应融入报告中。
+
 请按以下章节结构生成Markdown报告：
 
 ## 报告结构
@@ -173,6 +175,8 @@ COMPARISON_REPORT_PROMPT = """
 
 分析数据：
 {analysis_data}
+
+注意：competitor_notes 是用户填写的竞品补充信息，值得重点关注，应融入报告中。
 
 我方产品是 `my_product`，其他全部是竞品。
 
