@@ -4,9 +4,15 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ArrowLeft, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
 import { reportApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { FeatureRadar } from '@/components/charts/FeatureRadar'
@@ -112,10 +118,16 @@ export default function ReportDetail() {
         </div>
       </div>
 
-      {/* Charts */}
-      {hasCharts && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">数据可视化</h2>
+      {/* Tabs: Visualization + Content */}
+      <Tabs defaultValue={hasCharts ? 'visualization' : 'content'}>
+        <TabsList>
+          <TabsTrigger value="visualization" disabled={!hasCharts}>
+            数据可视化
+          </TabsTrigger>
+          <TabsTrigger value="content">报告内容</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="visualization" className="space-y-4 mt-4">
           <div className="grid gap-4 md:grid-cols-2">
             {charts.feature_matrix?.features?.length > 0 && (
               <FeatureRadar
@@ -136,22 +148,20 @@ export default function ReportDetail() {
           {Object.keys(charts.swot_analysis ?? {}).length > 0 && (
             <SwotSummary swot_analysis={charts.swot_analysis} />
           )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* Report Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">报告内容</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <article className="prose prose-sm max-w-none dark:prose-invert">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {report.content}
-            </ReactMarkdown>
-          </article>
-        </CardContent>
-      </Card>
+        <TabsContent value="content" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <article className="prose prose-sm max-w-none dark:prose-invert">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {report.content}
+                </ReactMarkdown>
+              </article>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

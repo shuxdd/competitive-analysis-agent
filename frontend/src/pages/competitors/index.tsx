@@ -13,6 +13,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -326,14 +333,31 @@ export default function CompetitorList() {
 
             <div className="space-y-2">
               <Label htmlFor="industry">行业</Label>
-              <Input
-                id="industry"
-                placeholder="如：电商、社交、SaaS"
+              <Select
                 value={formData.industry}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, industry: e.target.value }))
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, industry: value }))
                 }
-              />
+              >
+                <SelectTrigger id="industry">
+                  <SelectValue placeholder="选择行业" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="电商">电商</SelectItem>
+                  <SelectItem value="社交">社交</SelectItem>
+                  <SelectItem value="SaaS">SaaS</SelectItem>
+                  <SelectItem value="金融">金融</SelectItem>
+                  <SelectItem value="教育">教育</SelectItem>
+                  <SelectItem value="医疗">医疗</SelectItem>
+                  <SelectItem value="游戏">游戏</SelectItem>
+                  <SelectItem value="企业服务">企业服务</SelectItem>
+                  <SelectItem value="人工智能">人工智能</SelectItem>
+                  <SelectItem value="云计算">云计算</SelectItem>
+                  <SelectItem value="安全">安全</SelectItem>
+                  <SelectItem value="硬件">硬件</SelectItem>
+                  <SelectItem value="其他">其他</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

@@ -81,3 +81,12 @@ config/huawei_key.json
 
 # Playwright MCP
 .playwright-mcp/
+
+# Unnecessary docs
+/PRD.md
+/DEPLOYMENT_PLAN.md
+/DEVELOPMENT_PROGRESS.md
+/OPTIMIZATION_ROADMAP.md
+/PROBLEM_LOG.md
+/docs/
+/deploy/
