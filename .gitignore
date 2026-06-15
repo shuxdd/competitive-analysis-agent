@@ -90,3 +90,11 @@ config/huawei_key.json
 /PROBLEM_LOG.md
 /docs/
 /deploy/
+
+# Removed files
+/__init__.py
+/demo.py
+/display/
+/examples/
+/report/templates/
+
