@@ -26,9 +26,7 @@
 | SerpAPI | 搜索引擎结果 | Google Custom Search |
 | Selenium | 动态网页爬取 | Playwright |
 | BeautifulSoup | HTML解析 | lxml |
-| Unstructured | 文档解析 | PyMuPDF |
-| python-docx | Word文档解析 | - |
-| PyMuPDF | PDF解析 | pdfplumber |
+| Apify | 应用商店数据采集 | - |
 
 ### 1.3 开发工具
 
@@ -1491,8 +1489,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装Python依赖
-COPY pyproject.toml .
-RUN pip install uv && uv pip install --system -e .
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # 复制代码
 COPY . .
@@ -1501,7 +1499,7 @@ COPY . .
 EXPOSE 8000
 
 # 启动命令
-CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ### 6.3 部署方案
@@ -1509,8 +1507,8 @@ CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
 **开发环境**
 ```bash
 # 后端
-uv pip install -e ".[dev]"
-uvicorn src.api.app:app --reload
+pip install -r requirements.txt
+uvicorn api.app:app --reload
 
 # 前端
 cd frontend

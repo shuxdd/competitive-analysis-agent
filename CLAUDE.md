@@ -25,7 +25,6 @@ api/            - FastAPI接口层（含 auth/ 认证模块）
 collector/      - 数据采集（搜索、爬取、清洗、Apify应用商店）
 config/         - 配置管理（设置、Prompt模板）
 frontend/       - React前端界面（含登录/注册页）
-examples/       - 使用示例
 knowledge/      - 知识库（向量存储、Embedding、RAG）
 models/         - 数据模型（Pydantic）
 report/         - 报告生成
@@ -58,9 +57,8 @@ utils/          - 工具类
 
 每次开发新功能时，必须同步更新：
 1. **CLAUDE.md** - 更新模块状态、新增命令等
-2. **DEVELOPMENT_PROGRESS.md** - 更新开发进度
-3. **README.md** - 如有目录结构变更
-4. **TECHNICAL_ARCHITECTURE.md** - 如有架构变更
+2. **README.md** - 如有目录结构变更
+3. **TECHNICAL_ARCHITECTURE.md** - 如有架构变更
 
 ### 代码Review标准
 
@@ -119,20 +117,13 @@ pytest tests/test_models.py tests/test_knowledge_simple.py tests/test_collector.
 # 运行单个模块测试
 pytest tests/test_agent.py -v
 
-# 运行示例
-python examples/models_demo.py
-python examples/knowledge_demo.py
-python examples/collector_demo.py
-python examples/agent_demo.py
-python examples/report_demo.py
-
 # 启动API服务
 uvicorn api.app:app --reload --host 0.0.0.0 --port 8000
 
 # 启动前端
 cd frontend && npm run dev
 
-# 写入种子数据（启动API后运行）
+# 写入种子数据（仅在本地运行，需先启动API）
 python seed.py              # 写入15个竞品
 python seed.py --clear      # 清空后重新写入
 python seed.py --dry-run    # 仅预览，不写入
@@ -171,8 +162,4 @@ GITHUB_TOKEN=your-github-token（可选，无限流限制）
 
 ## 相关文档
 
-- [PROBLEM_LOG.md](PROBLEM_LOG.md) - 问题记录（现象、根因、解决方案）
-- [OPTIMIZATION_ROADMAP.md](OPTIMIZATION_ROADMAP.md) - 优化路线图
-- [DEVELOPMENT_PROGRESS.md](DEVELOPMENT_PROGRESS.md) - 开发进度
 - [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) - 技术架构
-- [PRD.md](PRD.md) - 产品需求文档

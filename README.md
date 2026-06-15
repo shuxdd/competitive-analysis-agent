@@ -4,39 +4,36 @@
 
 ## 项目文档
 
-- [PRD.md](PRD.md) - 产品需求文档
 - [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) - 技术架构文档
 
 ## 目录结构
 
 ```
-competitive-analysis-agent/
+jpleida/
 │
-├── PRD.md                          # 产品需求文档
-├── TECHNICAL_ARCHITECTURE.md       # 技术架构文档
 ├── README.md                       # 项目说明
 │
 ├── agent/                          # Agent核心
 │   ├── graph.py                    # LangGraph 状态图
 │   ├── nodes/                      # 处理节点
-│   │   ├── planner.py              # 任务规划
-│   │   ├── searcher.py             # 搜索
-│   │   ├── scraper.py              # 爬取
-│   │   ├── extractor.py            # 信息提取
-│   │   ├── analyzer.py             # 分析对比
-│   │   └── reporter.py             # 报告生成
 │   └── tools/                      # Agent工具
-│       ├── search_tool.py          # 搜索引擎
-│       ├── scraper_tool.py         # 网页爬取
-│       └── vector_tool.py          # 向量检索
 │
 ├── api/                            # API接口层
 │   ├── app.py                      # FastAPI入口
 │   ├── routes/                     # 路由
-│   │   ├── analysis.py             # 分析任务
-│   │   └── competitors.py          # 竞品管理
 │   └── schemas/                    # 数据模式
-│       └── requests.py             # 请求/响应 Schema
+│
+├── collector/                      # 数据采集
+│   ├── base.py                     # 基础采集器
+│   ├── web_search.py               # 网页搜索
+│   ├── web_scraper.py              # 网页爬取
+│   └── cleaner.py                  # 数据清洗
+│
+├── config/                         # 配置管理
+│   ├── settings.py                 # 全局配置
+│   └── prompts.py                  # Prompt模板
+│
+├── frontend/                       # React前端界面
 │
 ├── knowledge/                      # 知识库管理
 │   ├── vector_store.py             # Chroma向量存储
@@ -44,31 +41,18 @@ competitive-analysis-agent/
 │   ├── knowledge_base.py           # 知识库管理
 │   └── README.md                   # 知识库文档
 │
-├── report/                         # 报告生成
-│   ├── analyzer.py                 # 数据分析
-│   ├── generator.py                # 报告生成
-│   └── templates/                  # 报告模板
-│
-├── collector/                      # 数据采集
-│   ├── base.py                   # 基础采集器
-│   ├── web_search.py             # 网页搜索
-│   ├── web_scraper.py            # 网页爬取
-│   └── cleaner.py                # 数据清洗
-│
-├── config/                         # 配置模块
-│   ├── settings.py                 # 全局配置
-│   └── prompts.py                  # Prompt模板
-│
 ├── models/                         # 数据模型
 │   ├── competitor.py               # 竞品结构
 │   ├── analysis.py                 # 分析结构
 │   └── report.py                   # 报告结构
 │
-├── display/                        # 前端展示
-│   └── app.py                      # Streamlit界面
+├── report/                         # 报告生成
+│   ├── analyzer.py                 # 数据分析
+│   └── generator.py                # 报告生成
 │
-└── utils/                          # 工具类
-    └── logger.py                   # 日志工具
+├── utils/                          # 工具类
+│
+└── tests/                          # 单元测试
 ```
 
 ## 模块职责
@@ -82,8 +66,8 @@ competitive-analysis-agent/
 | **report/** | 报告生成 | analyzer.py, generator.py |
 | **config/** | 配置管理 | settings.py, prompts.py |
 | **models/** | 数据结构 | competitor.py, analysis.py, report.py |
-| **display/** | 前端界面 | app.py |
-| **utils/** | 日志工具 | logger.py |
+| **frontend/** | React前端界面 | pages/*, components/* |
+| **utils/** | 工具类 | logger.py |
 
 ## 数据流
 
@@ -98,15 +82,15 @@ competitive-analysis-agent/
 - **LLM框架**: LangChain + LangGraph
 - **向量数据库**: Chroma
 - **后端**: FastAPI
-- **前端**: Streamlit
-- **爬虫**: Selenium + BeautifulSoup
+- **前端**: React + TypeScript + Tailwind CSS + shadcn/ui
+- **爬虫**: Selenium + BeautifulSoup + Apify
 
 ## 快速开始
 
 ### 安装依赖
 
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
 ### 配置环境变量
@@ -130,15 +114,6 @@ pytest tests/test_models.py -v
 pytest tests/test_knowledge_simple.py -v
 ```
 
-### 运行示例
-
-```bash
-# 数据模型示例
-python examples/models_demo.py
-
-# 知识库示例
-python examples/knowledge_demo.py
-```
 
 ## 模块说明
 
