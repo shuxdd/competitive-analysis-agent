@@ -97,4 +97,5 @@ config/huawei_key.json
 /display/
 /examples/
 /report/templates/
+/seed.py
 
